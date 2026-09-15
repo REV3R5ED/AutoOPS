@@ -114,7 +114,12 @@ Applications should still avoid placing sensitive material in operation results 
 - [x] reusable workflow composition
 - [x] richer health checks
 - [x] reporting/export support
-- [ ] improved cross-platform behavior
+- [x] improved cross-platform behavior
+
+### Next — Release hardening
+- [ ] changelog and release notes
+- [ ] package metadata and release readiness review
+- [ ] portfolio-oriented usage examples
 
 ## Testing
 
@@ -123,7 +128,7 @@ python -m pip install -e . pytest
 pytest -q
 ```
 
-GitHub Actions runs the test suite and a CLI smoke test on Python 3.10–3.13.
+GitHub Actions runs the full test suite on Python 3.10–3.13 on Linux and adds Windows and macOS coverage on Python 3.12. CLI smoke tests exercise both health checks in JSON and CSV modes on every matrix target, catching platform-specific path, encoding, shell, and serialization regressions before release.
 
 ## Safety
 
