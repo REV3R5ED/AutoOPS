@@ -8,6 +8,13 @@ import json
 from autoops import __version__
 from autoops.checks import disk_status, environment_status
 from autoops.config import load_config
+from autoops.reporting import to_csv
+
+
+def _output_group(parser: argparse.ArgumentParser) -> None:
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument("--json", action="store_true", dest="as_json", help="Emit JSON")
+    group.add_argument("--csv", action="store_true", dest="as_csv", help="Emit CSV")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -21,12 +28,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     disk = subparsers.add_parser("disk", help="Inspect filesystem capacity (read-only)")
     disk.add_argument("path", nargs="?", default=".", help="Path to inspect")
-    disk.add_argument("--json", action="store_true", dest="as_json", help="Emit JSON")
+    _output_group(disk)
 
     environment = subparsers.add_parser(
         "environment", help="Inspect runtime and host environment (read-only)"
     )
-    environment.add_argument("--json", action="store_true", dest="as_json", help="Emit JSON")
+    _output_group(environment)
     return parser
 
 
@@ -45,11 +52,12 @@ def main(argv: list[str] | None = None) -> int:
             print(f"error: {exc}")
             return 2
 
-        as_json = args.as_json or config.json_output
         state = "warning" if status.used_percent >= config.disk_warning_percent else "ok"
-        if as_json:
-            payload = status.to_dict()
-            payload.update({"state": state, "warning_percent": config.disk_warning_percent})
+        payload = status.to_dict()
+        payload.update({"state": state, "warning_percent": config.disk_warning_percent})
+        if args.as_csv:
+            print(to_csv(payload, fields=("path", "total_bytes", "used_bytes", "free_bytes", "used_percent", "state", "warning_percent")), end="")
+        elif args.as_json or config.json_output:
             print(json.dumps(payload, sort_keys=True))
         else:
             gib = 1024 ** 3
@@ -61,9 +69,11 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "environment":
         status = environment_status()
-        as_json = args.as_json or config.json_output
-        if as_json:
-            print(json.dumps(status.to_dict(), sort_keys=True))
+        payload = status.to_dict()
+        if args.as_csv:
+            print(to_csv(payload, fields=("hostname", "platform", "platform_release", "architecture", "python_version", "cpu_count")), end="")
+        elif args.as_json or config.json_output:
+            print(json.dumps(payload, sort_keys=True))
         else:
             print(f"Hostname: {status.hostname}")
             print(f"Platform: {status.platform} {status.platform_release} ({status.architecture})")
