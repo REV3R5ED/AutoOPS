@@ -22,6 +22,14 @@ autoops disk /path/to/check --json
 
 Human output summarizes used/free capacity; `--json` produces a stable record suitable for scripts and monitoring integrations. Invalid paths fail explicitly without making system changes.
 
+## Operation safety contract
+
+AutoOPS now has a reusable `Operation` / `OperationResult` contract for future automation modules. Every operation declares whether it mutates system state. Mutating operations default to **dry-run**, and their action is not called until a caller explicitly supplies `dry_run=False`.
+
+Results use stable `success`, `status`, `message`, and `data` fields and serialize cleanly for CLI or integration output. Exceptions at the operation boundary are normalized into failed results rather than leaking inconsistent result shapes.
+
+This contract is deliberately in place before state-changing modules are introduced so future features inherit safe behavior instead of adding safety later.
+
 ## Design Principles
 
 - safe defaults
@@ -35,9 +43,9 @@ Human output summarizes used/free capacity; `--json` produces a stable record su
 
 ### v0.1 — Foundation
 - [x] Python package and CLI skeleton
-- [ ] common task/result model
+- [x] common task/result model
 - [ ] configuration handling
-- [ ] dry-run framework
+- [x] dry-run framework
 - [ ] structured logging
 - [x] initial safe operations module: disk health
 - [x] unit tests and CI
@@ -59,7 +67,7 @@ GitHub Actions runs the test suite and a CLI smoke test on Python 3.10–3.13.
 
 ## Safety
 
-AutoOPS is intended for systems you own or administer with authorization. Current health-check functionality is read-only. Future automation that could cause destructive or irreversible changes must require explicit operator intent and appropriate safeguards.
+AutoOPS is intended for systems you own or administer with authorization. Current health-check functionality is read-only. The operation contract ensures future state-changing automation is dry-run by default and requires explicit operator intent before execution. Destructive or irreversible features should additionally provide feature-specific safeguards.
 
 ## Development
 
