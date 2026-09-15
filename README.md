@@ -109,4 +109,4 @@ Changes should be useful, tested, documented, and suitable for a professional IT
 
 ## License
 
-The package metadata currently declares MIT; a standalone LICENSE file will be added before the first stable release.
+MIT. See [LICENSE](LICENSE).
