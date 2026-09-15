@@ -2,20 +2,25 @@
 
 Practical automation scripts and utilities for repetitive IT operations.
 
-> Status: early development / v0.1 roadmap
+> Status: early development / v0.1
 
 ## Goals
 
 AutoOPS focuses on safe, understandable automation that reduces repetitive operational work while keeping actions observable and controllable.
 
-Planned areas include:
+Planned areas include system/environment checks, file maintenance workflows, service/process health checks, repeatable task runners, structured logging, dry-run support, and machine-readable output.
 
-- system and environment checks
-- file and directory maintenance workflows
-- service/process health checks
-- repeatable operational task runners
-- structured logging and dry-run support
-- machine-readable output for integrations
+## Current capability: disk health
+
+The first runnable module provides a cross-platform, read-only filesystem capacity check.
+
+```bash
+python -m pip install -e .
+autoops disk .
+autoops disk /path/to/check --json
+```
+
+Human output summarizes used/free capacity; `--json` produces a stable record suitable for scripts and monitoring integrations. Invalid paths fail explicitly without making system changes.
 
 ## Design Principles
 
@@ -29,13 +34,13 @@ Planned areas include:
 ## Roadmap
 
 ### v0.1 — Foundation
-- [ ] Python package and CLI skeleton
+- [x] Python package and CLI skeleton
 - [ ] common task/result model
 - [ ] configuration handling
 - [ ] dry-run framework
 - [ ] structured logging
-- [ ] initial safe operations modules
-- [ ] unit tests and CI
+- [x] initial safe operations module: disk health
+- [x] unit tests and CI
 
 ### v0.2 — Operational Toolkit
 - [ ] reusable workflow composition
@@ -43,9 +48,18 @@ Planned areas include:
 - [ ] reporting/export support
 - [ ] improved cross-platform behavior
 
+## Testing
+
+```bash
+python -m pip install -e . pytest
+pytest -q
+```
+
+GitHub Actions runs the test suite and a CLI smoke test on Python 3.10–3.13.
+
 ## Safety
 
-AutoOPS is intended for systems you own or administer with authorization. Automation that could cause destructive or irreversible changes should require explicit operator intent and appropriate safeguards.
+AutoOPS is intended for systems you own or administer with authorization. Current health-check functionality is read-only. Future automation that could cause destructive or irreversible changes must require explicit operator intent and appropriate safeguards.
 
 ## Development
 
@@ -53,4 +67,4 @@ Changes should be useful, tested, documented, and suitable for a professional IT
 
 ## License
 
-A project license will be finalized before the first stable release.
+The package metadata currently declares MIT; a standalone LICENSE file will be added before the first stable release.
