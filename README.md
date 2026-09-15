@@ -2,7 +2,7 @@
 
 Practical automation scripts and utilities for repetitive IT operations.
 
-> Status: early development / v0.1
+> Status: active development / v0.2
 
 ## Goals
 
@@ -43,11 +43,29 @@ Example:
 
 ## Operation safety contract
 
-AutoOPS has a reusable `Operation` / `OperationResult` contract for future automation modules. Every operation declares whether it mutates system state. Mutating operations default to **dry-run**, and their action is not called until a caller explicitly supplies `dry_run=False`.
+AutoOPS has a reusable `Operation` / `OperationResult` contract for automation modules. Every operation declares whether it mutates system state. Mutating operations default to **dry-run**, and their action is not called until a caller explicitly supplies `dry_run=False`.
 
 Results use stable `success`, `status`, `message`, and `data` fields and serialize cleanly for CLI or integration output. Exceptions at the operation boundary are normalized into failed results rather than leaking inconsistent result shapes.
 
-This contract is deliberately in place before state-changing modules are introduced so future features inherit safe behavior instead of adding safety later.
+## Workflow composition
+
+`autoops.workflows` composes operations into ordered, reusable workflows without bypassing their safety contract. Workflow execution passes a single dry-run decision to every step, so mutating steps remain non-executing by default. Workflows fail fast by default to avoid running dependent later steps after a failure; diagnostic workflows can explicitly disable fail-fast when collecting all results is more useful.
+
+```python
+from autoops.operations import Operation
+from autoops.workflows import Workflow
+
+workflow = Workflow(
+    "preflight",
+    (
+        Operation("environment", lambda: {"ready": True}),
+        Operation("planned-change", lambda: {"changed": True}, mutates_state=True),
+    ),
+)
+result = workflow.run()  # planned-change is dry-run by default
+```
+
+`WorkflowResult.to_dict()` provides a stable machine-readable summary containing ordered step results and whether execution stopped early.
 
 ## Structured audit logging
 
@@ -85,7 +103,7 @@ Applications should still avoid placing sensitive material in operation results 
 - [x] unit tests and CI
 
 ### v0.2 — Operational Toolkit
-- [ ] reusable workflow composition
+- [x] reusable workflow composition
 - [ ] richer health checks
 - [ ] reporting/export support
 - [ ] improved cross-platform behavior
@@ -101,7 +119,7 @@ GitHub Actions runs the test suite and a CLI smoke test on Python 3.10–3.13.
 
 ## Safety
 
-AutoOPS is intended for systems you own or administer with authorization. Current health-check functionality is read-only. The operation contract ensures future state-changing automation is dry-run by default and requires explicit operator intent before execution. Configuration is local and deliberately limited to documented keys; it does not load or execute code. Structured logging redacts common secret-bearing fields and writes only to streams explicitly supplied by the caller. Destructive or irreversible features should additionally provide feature-specific safeguards.
+AutoOPS is intended for systems you own or administer with authorization. Current health-check functionality is read-only. The operation and workflow contracts ensure future state-changing automation is dry-run by default and requires explicit operator intent before execution. Workflows fail fast by default, reducing the chance that dependent later actions run after an unsuccessful prerequisite. Configuration is local and deliberately limited to documented keys; it does not load or execute code. Structured logging redacts common secret-bearing fields and writes only to streams explicitly supplied by the caller. Destructive or irreversible features should additionally provide feature-specific safeguards.
 
 ## Development
 
