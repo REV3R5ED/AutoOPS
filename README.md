@@ -49,6 +49,21 @@ Results use stable `success`, `status`, `message`, and `data` fields and seriali
 
 This contract is deliberately in place before state-changing modules are introduced so future features inherit safe behavior instead of adding safety later.
 
+## Structured audit logging
+
+`autoops.logging` turns `OperationResult` objects into stable, newline-delimited JSON audit events. Events include a timezone-aware UTC timestamp, event type, success/status fields, message, and operation data, making them suitable for later ingestion by monitoring or reporting tools.
+
+The logger recursively redacts values stored under common secret-bearing field names such as passwords, tokens, API keys, secrets, and credentials before serialization. It never writes files implicitly: callers choose the destination stream, keeping logging behavior explicit and testable.
+
+```python
+from autoops.logging import write_json_event
+
+with open("autoops.ndjson", "a", encoding="utf-8") as stream:
+    write_json_event(result, stream)
+```
+
+Applications should still avoid placing sensitive material in operation results in the first place; redaction is a defense-in-depth safeguard, not a secret-management system.
+
 ## Design Principles
 
 - safe defaults
@@ -65,7 +80,7 @@ This contract is deliberately in place before state-changing modules are introdu
 - [x] common task/result model
 - [x] configuration handling
 - [x] dry-run framework
-- [ ] structured logging
+- [x] structured logging
 - [x] initial safe operations module: disk health
 - [x] unit tests and CI
 
@@ -86,7 +101,7 @@ GitHub Actions runs the test suite and a CLI smoke test on Python 3.10–3.13.
 
 ## Safety
 
-AutoOPS is intended for systems you own or administer with authorization. Current health-check functionality is read-only. The operation contract ensures future state-changing automation is dry-run by default and requires explicit operator intent before execution. Configuration is local and deliberately limited to documented keys; it does not load or execute code. Destructive or irreversible features should additionally provide feature-specific safeguards.
+AutoOPS is intended for systems you own or administer with authorization. Current health-check functionality is read-only. The operation contract ensures future state-changing automation is dry-run by default and requires explicit operator intent before execution. Configuration is local and deliberately limited to documented keys; it does not load or execute code. Structured logging redacts common secret-bearing fields and writes only to streams explicitly supplied by the caller. Destructive or irreversible features should additionally provide feature-specific safeguards.
 
 ## Development
 
