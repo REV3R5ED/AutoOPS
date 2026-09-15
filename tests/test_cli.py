@@ -39,3 +39,14 @@ def test_cli_rejects_bad_config(tmp_path, capsys) -> None:
 
     assert main(["--config", str(config), "disk", str(tmp_path)]) == 2
     assert "Unknown configuration key" in capsys.readouterr().out
+
+
+def test_environment_cli_json(capsys) -> None:
+    result = main(["environment", "--json"])
+    payload = json.loads(capsys.readouterr().out)
+
+    assert result == 0
+    assert payload["hostname"]
+    assert payload["platform"]
+    assert payload["python_version"]
+    assert payload["cpu_count"] is None or payload["cpu_count"] >= 1

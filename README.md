@@ -10,17 +10,19 @@ AutoOPS focuses on safe, understandable automation that reduces repetitive opera
 
 Planned areas include system/environment checks, file maintenance workflows, service/process health checks, repeatable task runners, structured logging, dry-run support, and machine-readable output.
 
-## Current capability: disk health
+## Health checks
 
-The first runnable module provides a cross-platform, read-only filesystem capacity check.
+AutoOPS currently provides two cross-platform, read-only operational checks:
 
 ```bash
 python -m pip install -e .
 autoops disk .
 autoops disk /path/to/check --json
+autoops environment
+autoops environment --json
 ```
 
-Human output summarizes used/free capacity; `--json` produces a stable record suitable for scripts and monitoring integrations. Invalid paths fail explicitly without making system changes.
+`disk` summarizes used/free filesystem capacity and warning state. `environment` captures a compact preflight snapshot containing hostname, operating system/release, machine architecture, Python version, and logical CPU count. Neither command changes system state or probes remote hosts. Both support stable JSON output for scripts and monitoring integrations.
 
 ## Configuration
 
@@ -104,7 +106,7 @@ Applications should still avoid placing sensitive material in operation results 
 
 ### v0.2 — Operational Toolkit
 - [x] reusable workflow composition
-- [ ] richer health checks
+- [x] richer health checks
 - [ ] reporting/export support
 - [ ] improved cross-platform behavior
 
@@ -119,7 +121,7 @@ GitHub Actions runs the test suite and a CLI smoke test on Python 3.10–3.13.
 
 ## Safety
 
-AutoOPS is intended for systems you own or administer with authorization. Current health-check functionality is read-only. The operation and workflow contracts ensure future state-changing automation is dry-run by default and requires explicit operator intent before execution. Workflows fail fast by default, reducing the chance that dependent later actions run after an unsuccessful prerequisite. Configuration is local and deliberately limited to documented keys; it does not load or execute code. Structured logging redacts common secret-bearing fields and writes only to streams explicitly supplied by the caller. Destructive or irreversible features should additionally provide feature-specific safeguards.
+AutoOPS is intended for systems you own or administer with authorization. Current health-check functionality is read-only. Disk inspection reads local filesystem capacity; environment inspection reads only local runtime/host metadata and performs no remote probing. The operation and workflow contracts ensure future state-changing automation is dry-run by default and requires explicit operator intent before execution. Workflows fail fast by default, reducing the chance that dependent later actions run after an unsuccessful prerequisite. Configuration is local and deliberately limited to documented keys; it does not load or execute code. Structured logging redacts common secret-bearing fields and writes only to streams explicitly supplied by the caller. Destructive or irreversible features should additionally provide feature-specific safeguards.
 
 ## Development
 

@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from autoops.checks import disk_status
+from autoops.checks import disk_status, environment_status
 
 
 def test_disk_status_reports_consistent_capacity(tmp_path: Path) -> None:
@@ -20,3 +20,15 @@ def test_disk_status_rejects_missing_path(tmp_path: Path) -> None:
     missing = tmp_path / "does-not-exist"
     with pytest.raises(FileNotFoundError, match="Path does not exist"):
         disk_status(str(missing))
+
+
+def test_environment_status_is_serializable_and_populated() -> None:
+    status = environment_status()
+    payload = status.to_dict()
+
+    assert payload["hostname"]
+    assert payload["platform"]
+    assert payload["platform_release"]
+    assert payload["architecture"]
+    assert payload["python_version"]
+    assert payload["cpu_count"] is None or payload["cpu_count"] >= 1

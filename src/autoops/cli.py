@@ -6,7 +6,7 @@ import argparse
 import json
 
 from autoops import __version__
-from autoops.checks import disk_status
+from autoops.checks import disk_status, environment_status
 from autoops.config import load_config
 
 
@@ -22,6 +22,11 @@ def build_parser() -> argparse.ArgumentParser:
     disk = subparsers.add_parser("disk", help="Inspect filesystem capacity (read-only)")
     disk.add_argument("path", nargs="?", default=".", help="Path to inspect")
     disk.add_argument("--json", action="store_true", dest="as_json", help="Emit JSON")
+
+    environment = subparsers.add_parser(
+        "environment", help="Inspect runtime and host environment (read-only)"
+    )
+    environment.add_argument("--json", action="store_true", dest="as_json", help="Emit JSON")
     return parser
 
 
@@ -52,6 +57,18 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Used: {status.used_bytes / gib:.2f} GiB / {status.total_bytes / gib:.2f} GiB ({status.used_percent:.2f}%)")
             print(f"Free: {status.free_bytes / gib:.2f} GiB")
             print(f"State: {state} (warning at {config.disk_warning_percent:.1f}%)")
+        return 0
+
+    if args.command == "environment":
+        status = environment_status()
+        as_json = args.as_json or config.json_output
+        if as_json:
+            print(json.dumps(status.to_dict(), sort_keys=True))
+        else:
+            print(f"Hostname: {status.hostname}")
+            print(f"Platform: {status.platform} {status.platform_release} ({status.architecture})")
+            print(f"Python: {status.python_version}")
+            print(f"CPU count: {status.cpu_count if status.cpu_count is not None else 'unknown'}")
         return 0
 
     return 1
