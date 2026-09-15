@@ -10,6 +10,8 @@ def test_disk_cli_json(tmp_path, capsys) -> None:
     assert result == 0
     assert payload["path"] == str(tmp_path.resolve())
     assert 0 <= payload["used_percent"] <= 100
+    assert payload["state"] in {"ok", "warning"}
+    assert payload["warning_percent"] == 90.0
 
 
 def test_disk_cli_missing_path(tmp_path, capsys) -> None:
@@ -17,3 +19,23 @@ def test_disk_cli_missing_path(tmp_path, capsys) -> None:
 
     assert result == 2
     assert "Path does not exist" in capsys.readouterr().out
+
+
+def test_cli_config_can_enable_json_and_threshold(tmp_path, capsys) -> None:
+    config = tmp_path / "autoops.json"
+    config.write_text('{"json_output": true, "disk_warning_percent": 0}', encoding="utf-8")
+
+    result = main(["--config", str(config), "disk", str(tmp_path)])
+    payload = json.loads(capsys.readouterr().out)
+
+    assert result == 0
+    assert payload["state"] == "warning"
+    assert payload["warning_percent"] == 0.0
+
+
+def test_cli_rejects_bad_config(tmp_path, capsys) -> None:
+    config = tmp_path / "autoops.json"
+    config.write_text('{"unknown": true}', encoding="utf-8")
+
+    assert main(["--config", str(config), "disk", str(tmp_path)]) == 2
+    assert "Unknown configuration key" in capsys.readouterr().out

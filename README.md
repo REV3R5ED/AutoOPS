@@ -22,9 +22,28 @@ autoops disk /path/to/check --json
 
 Human output summarizes used/free capacity; `--json` produces a stable record suitable for scripts and monitoring integrations. Invalid paths fail explicitly without making system changes.
 
+## Configuration
+
+AutoOPS supports an optional, explicit JSON configuration file. Pass it before the subcommand:
+
+```bash
+autoops --config autoops.json disk /
+```
+
+Example:
+
+```json
+{
+  "json_output": true,
+  "disk_warning_percent": 85
+}
+```
+
+`json_output` changes the default output mode and `disk_warning_percent` controls when the disk check reports a `warning` state. CLI `--json` can still opt into JSON for an individual invocation. Unknown keys, wrong types, malformed JSON, and thresholds outside 0–100 are rejected instead of being silently ignored. No config file is required; safe built-in defaults are used otherwise.
+
 ## Operation safety contract
 
-AutoOPS now has a reusable `Operation` / `OperationResult` contract for future automation modules. Every operation declares whether it mutates system state. Mutating operations default to **dry-run**, and their action is not called until a caller explicitly supplies `dry_run=False`.
+AutoOPS has a reusable `Operation` / `OperationResult` contract for future automation modules. Every operation declares whether it mutates system state. Mutating operations default to **dry-run**, and their action is not called until a caller explicitly supplies `dry_run=False`.
 
 Results use stable `success`, `status`, `message`, and `data` fields and serialize cleanly for CLI or integration output. Exceptions at the operation boundary are normalized into failed results rather than leaking inconsistent result shapes.
 
@@ -44,7 +63,7 @@ This contract is deliberately in place before state-changing modules are introdu
 ### v0.1 — Foundation
 - [x] Python package and CLI skeleton
 - [x] common task/result model
-- [ ] configuration handling
+- [x] configuration handling
 - [x] dry-run framework
 - [ ] structured logging
 - [x] initial safe operations module: disk health
@@ -67,7 +86,7 @@ GitHub Actions runs the test suite and a CLI smoke test on Python 3.10–3.13.
 
 ## Safety
 
-AutoOPS is intended for systems you own or administer with authorization. Current health-check functionality is read-only. The operation contract ensures future state-changing automation is dry-run by default and requires explicit operator intent before execution. Destructive or irreversible features should additionally provide feature-specific safeguards.
+AutoOPS is intended for systems you own or administer with authorization. Current health-check functionality is read-only. The operation contract ensures future state-changing automation is dry-run by default and requires explicit operator intent before execution. Configuration is local and deliberately limited to documented keys; it does not load or execute code. Destructive or irreversible features should additionally provide feature-specific safeguards.
 
 ## Development
 
