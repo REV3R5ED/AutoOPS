@@ -11,6 +11,8 @@ from autoops.checks import disk_status, environment_status
 from autoops.config import load_config
 from autoops.reporting import to_csv
 
+PREFLIGHT_SCHEMA_VERSION = 1
+
 
 def _output_group(parser: argparse.ArgumentParser) -> None:
     group = parser.add_mutually_exclusive_group()
@@ -59,6 +61,7 @@ def _preflight_payload(path: str, warning_percent: float) -> dict[str, object]:
     disk = disk_status(path)
     state = "warning" if disk.used_percent >= warning_percent else "ok"
     return {
+        "schema_version": PREFLIGHT_SCHEMA_VERSION,
         "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         "hostname": environment.hostname,
         "platform": environment.platform,
@@ -128,7 +131,7 @@ def main(argv: list[str] | None = None) -> int:
             return 2
 
         fields = (
-            "generated_at", "hostname", "platform", "platform_release", "architecture", "python_version", "cpu_count",
+            "schema_version", "generated_at", "hostname", "platform", "platform_release", "architecture", "python_version", "cpu_count",
             "disk_path", "disk_total_bytes", "disk_used_bytes", "disk_free_bytes", "disk_used_percent",
             "disk_state", "disk_warning_percent",
         )
@@ -137,6 +140,7 @@ def main(argv: list[str] | None = None) -> int:
         elif args.as_json or config.json_output:
             print(json.dumps(payload, sort_keys=True))
         else:
+            print(f"Report schema: v{payload['schema_version']}")
             print(f"Generated: {payload['generated_at']}")
             print(f"Host: {payload['hostname']} — {payload['platform']} {payload['platform_release']} ({payload['architecture']})")
             print(f"Python: {payload['python_version']} | CPU count: {payload['cpu_count'] if payload['cpu_count'] is not None else 'unknown'}")
