@@ -4,9 +4,24 @@ from autoops.operations import Operation, OperationStatus
 from autoops.workflows import Workflow
 
 
+def test_workflow_rejects_blank_name():
+    with pytest.raises(ValueError, match="non-empty string"):
+        Workflow("   ", (Operation("check", lambda: None),))
+
+
+def test_workflow_rejects_non_string_name():
+    with pytest.raises(ValueError, match="non-empty string"):
+        Workflow(None, (Operation("check", lambda: None),))
+
+
 def test_workflow_rejects_empty_operation_sequence():
     with pytest.raises(ValueError, match="at least one operation"):
         Workflow("empty", ())
+
+
+def test_workflow_rejects_non_operation_members():
+    with pytest.raises(TypeError, match="only Operation instances"):
+        Workflow("invalid", (Operation("check", lambda: None), "not-an-operation"))
 
 
 def test_workflow_runs_operations_in_order():
