@@ -32,11 +32,17 @@ class Workflow:
     Workflows fail fast by default so later steps do not run after a failure.
     The workflow-level ``dry_run`` value is passed to every operation; therefore
     mutating operations remain dry-run unless execution is explicitly requested.
+    Empty workflows are rejected so a configuration mistake cannot be reported as
+    a successful automation run without executing any checks or operations.
     """
 
     name: str
     operations: tuple[Operation, ...]
     fail_fast: bool = True
+
+    def __post_init__(self) -> None:
+        if not self.operations:
+            raise ValueError("workflow must contain at least one operation")
 
     def run(self, *, dry_run: bool = True) -> WorkflowResult:
         results: list[OperationResult] = []
