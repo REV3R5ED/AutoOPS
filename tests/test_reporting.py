@@ -19,6 +19,19 @@ def test_to_csv_rejects_nested_values() -> None:
         to_csv({"data": {"secret": "not-written"}}, fields=("data",))
 
 
+@pytest.mark.parametrize("value", ["=1+1", "+cmd", "-2+3", "@SUM(A1:A2)"])
+def test_to_csv_neutralizes_spreadsheet_formula_prefixes(value: str) -> None:
+    text = to_csv({"value": value}, fields=("value",))
+    rows = list(csv.DictReader(io.StringIO(text)))
+    assert rows == [{"value": "'" + value}]
+
+
+def test_to_csv_does_not_modify_ordinary_strings_or_numbers() -> None:
+    text = to_csv({"label": "healthy", "value": 42}, fields=("label", "value"))
+    rows = list(csv.DictReader(io.StringIO(text)))
+    assert rows == [{"label": "healthy", "value": "42"}]
+
+
 def test_disk_cli_csv(tmp_path, capsys) -> None:
     result = main(["disk", str(tmp_path), "--csv"])
     rows = list(csv.DictReader(io.StringIO(capsys.readouterr().out)))
