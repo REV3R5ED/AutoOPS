@@ -11,7 +11,7 @@ from autoops.checks import disk_status, environment_status
 from autoops.config import load_config
 from autoops.reporting import to_csv
 
-PREFLIGHT_SCHEMA_VERSION = 2
+PREFLIGHT_SCHEMA_VERSION = 3
 
 
 def _output_group(parser: argparse.ArgumentParser) -> None:
@@ -31,27 +31,15 @@ def build_parser() -> argparse.ArgumentParser:
 
     disk = subparsers.add_parser("disk", help="Inspect filesystem capacity (read-only)")
     disk.add_argument("path", nargs="?", default=".", help="Path to inspect")
-    disk.add_argument(
-        "--fail-on-warning",
-        action="store_true",
-        help="Return exit code 1 when disk usage meets the warning threshold",
-    )
+    disk.add_argument("--fail-on-warning", action="store_true", help="Return exit code 1 when disk usage meets the warning threshold")
     _output_group(disk)
 
-    environment = subparsers.add_parser(
-        "environment", help="Inspect runtime and host environment (read-only)"
-    )
+    environment = subparsers.add_parser("environment", help="Inspect runtime and host environment (read-only)")
     _output_group(environment)
 
-    preflight = subparsers.add_parser(
-        "preflight", help="Run combined local environment and disk health checks (read-only)"
-    )
+    preflight = subparsers.add_parser("preflight", help="Run combined local environment and disk health checks (read-only)")
     preflight.add_argument("path", nargs="?", default=".", help="Path whose filesystem capacity to inspect")
-    preflight.add_argument(
-        "--fail-on-warning",
-        action="store_true",
-        help="Return exit code 1 when disk usage meets the warning threshold",
-    )
+    preflight.add_argument("--fail-on-warning", action="store_true", help="Return exit code 1 when disk usage meets the warning threshold")
     _output_group(preflight)
     return parser
 
@@ -62,6 +50,7 @@ def _preflight_payload(path: str, warning_percent: float) -> dict[str, object]:
     state = "warning" if disk.used_percent >= warning_percent else "ok"
     return {
         "schema_version": PREFLIGHT_SCHEMA_VERSION,
+        "autoops_version": __version__,
         "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         "overall_state": state,
         "hostname": environment.hostname,
@@ -94,7 +83,6 @@ def main(argv: list[str] | None = None) -> int:
         except (FileNotFoundError, OSError) as exc:
             print(f"error: {exc}")
             return 2
-
         state = "warning" if status.used_percent >= config.disk_warning_percent else "ok"
         payload = status.to_dict()
         payload.update({"state": state, "warning_percent": config.disk_warning_percent})
@@ -130,18 +118,16 @@ def main(argv: list[str] | None = None) -> int:
         except (FileNotFoundError, OSError) as exc:
             print(f"error: {exc}")
             return 2
-
         fields = (
-            "schema_version", "generated_at", "overall_state", "hostname", "platform", "platform_release", "architecture", "python_version", "cpu_count",
-            "disk_path", "disk_total_bytes", "disk_used_bytes", "disk_free_bytes", "disk_used_percent",
-            "disk_state", "disk_warning_percent",
+            "schema_version", "autoops_version", "generated_at", "overall_state", "hostname", "platform", "platform_release", "architecture", "python_version", "cpu_count",
+            "disk_path", "disk_total_bytes", "disk_used_bytes", "disk_free_bytes", "disk_used_percent", "disk_state", "disk_warning_percent",
         )
         if args.as_csv:
             print(to_csv(payload, fields=fields), end="")
         elif args.as_json or config.json_output:
             print(json.dumps(payload, sort_keys=True))
         else:
-            print(f"Report schema: v{payload['schema_version']}")
+            print(f"Report schema: v{payload['schema_version']} | AutoOPS: {payload['autoops_version']}")
             print(f"Generated: {payload['generated_at']}")
             print(f"Overall state: {payload['overall_state']}")
             print(f"Host: {payload['hostname']} — {payload['platform']} {payload['platform_release']} ({payload['architecture']})")
