@@ -5,6 +5,7 @@ All notable changes to AutoOPS are documented here. The project follows semantic
 ## [Unreleased]
 
 ### Added
+- Operations now reject blank names and non-callable actions at construction time, preventing malformed automation definitions from reaching workflows or producing ambiguous audit/report identities.
 - Operation result payloads now reject the reserved `operation` metadata key, preventing an action from spoofing its identity in serialized reports, logs, or workflow results.
 - Numeric disk thresholds now reject non-finite values (`NaN` and positive/negative infinity), preventing malformed programmatic configuration from bypassing safety bounds or producing ambiguous health-check results.
 - Workflows now reject an empty operation sequence at construction time, preventing configuration mistakes from being reported as successful automation runs when no checks or actions actually executed.

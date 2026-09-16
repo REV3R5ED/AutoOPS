@@ -79,3 +79,22 @@ def test_operation_cannot_override_reserved_operation_metadata():
     assert result.status is OperationStatus.FAILED
     assert result.message == "trusted-name failed; operation returned reserved result metadata."
     assert result.data == {"operation": "trusted-name", "error_type": "ReservedResultKey"}
+
+
+def test_operation_rejects_blank_name():
+    for name in ("", "   ", "\t"):
+        try:
+            Operation(name, lambda: None)
+        except ValueError as exc:
+            assert str(exc) == "operation name must be a non-empty string"
+        else:
+            raise AssertionError("blank operation name should be rejected")
+
+
+def test_operation_rejects_non_callable_action():
+    try:
+        Operation("invalid-action", None)  # type: ignore[arg-type]
+    except TypeError as exc:
+        assert str(exc) == "operation action must be callable"
+    else:
+        raise AssertionError("non-callable operation action should be rejected")

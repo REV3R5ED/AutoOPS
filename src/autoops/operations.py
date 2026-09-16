@@ -43,6 +43,12 @@ class Operation:
     action: Callable[[], dict[str, Any] | None]
     mutates_state: bool = False
 
+    def __post_init__(self) -> None:
+        if not isinstance(self.name, str) or not self.name.strip():
+            raise ValueError("operation name must be a non-empty string")
+        if not callable(self.action):
+            raise TypeError("operation action must be callable")
+
     def run(self, *, dry_run: bool = True) -> OperationResult:
         if self.mutates_state and dry_run:
             return OperationResult(
