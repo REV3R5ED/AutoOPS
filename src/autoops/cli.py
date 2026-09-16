@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from datetime import datetime, timezone
 
 from autoops import __version__
 from autoops.checks import disk_status, environment_status
@@ -58,6 +59,7 @@ def _preflight_payload(path: str, warning_percent: float) -> dict[str, object]:
     disk = disk_status(path)
     state = "warning" if disk.used_percent >= warning_percent else "ok"
     return {
+        "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         "hostname": environment.hostname,
         "platform": environment.platform,
         "platform_release": environment.platform_release,
@@ -126,7 +128,7 @@ def main(argv: list[str] | None = None) -> int:
             return 2
 
         fields = (
-            "hostname", "platform", "platform_release", "architecture", "python_version", "cpu_count",
+            "generated_at", "hostname", "platform", "platform_release", "architecture", "python_version", "cpu_count",
             "disk_path", "disk_total_bytes", "disk_used_bytes", "disk_free_bytes", "disk_used_percent",
             "disk_state", "disk_warning_percent",
         )
@@ -135,6 +137,7 @@ def main(argv: list[str] | None = None) -> int:
         elif args.as_json or config.json_output:
             print(json.dumps(payload, sort_keys=True))
         else:
+            print(f"Generated: {payload['generated_at']}")
             print(f"Host: {payload['hostname']} — {payload['platform']} {payload['platform_release']} ({payload['architecture']})")
             print(f"Python: {payload['python_version']} | CPU count: {payload['cpu_count'] if payload['cpu_count'] is not None else 'unknown'}")
             print(f"Disk: {payload['disk_path']} — {payload['disk_used_percent']:.2f}% used")
