@@ -45,6 +45,41 @@ def test_cli_config_can_enable_json_and_threshold(tmp_path, capsys) -> None:
     assert payload["warning_percent"] == 0.0
 
 
+def test_disk_fail_on_warning_returns_one_and_keeps_json_report(tmp_path, capsys) -> None:
+    config = tmp_path / "autoops.json"
+    config.write_text('{"disk_warning_percent": 0}', encoding="utf-8")
+
+    result = main([
+        "--config",
+        str(config),
+        "disk",
+        str(tmp_path),
+        "--json",
+        "--fail-on-warning",
+    ])
+    payload = json.loads(capsys.readouterr().out)
+
+    assert result == 1
+    assert payload["state"] == "warning"
+    assert payload["warning_percent"] == 0.0
+
+
+def test_disk_fail_on_warning_does_not_fail_healthy_check(tmp_path, capsys) -> None:
+    config = tmp_path / "autoops.json"
+    config.write_text('{"disk_warning_percent": 100}', encoding="utf-8")
+
+    result = main([
+        "--config",
+        str(config),
+        "disk",
+        str(tmp_path),
+        "--fail-on-warning",
+    ])
+
+    assert result == 0
+    assert "State: ok" in capsys.readouterr().out
+
+
 def test_cli_rejects_bad_config(tmp_path, capsys) -> None:
     config = tmp_path / "autoops.json"
     config.write_text('{"unknown": true}', encoding="utf-8")
