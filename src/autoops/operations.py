@@ -34,9 +34,10 @@ class OperationResult:
 class Operation:
     """A named operation with explicit mutation semantics.
 
-    Mutating operations are never executed unless ``dry_run`` is False.
+    Mutating operations are never executed unless ``dry_run`` is exactly False.
     Callers should default to dry-run when exposing these operations through
-    user-facing interfaces.
+    user-facing interfaces. Boolean safety flags are validated strictly so
+    loosely typed programmatic callers cannot accidentally authorize mutation.
     """
 
     name: str
@@ -48,8 +49,13 @@ class Operation:
             raise ValueError("operation name must be a non-empty string")
         if not callable(self.action):
             raise TypeError("operation action must be callable")
+        if not isinstance(self.mutates_state, bool):
+            raise TypeError("mutates_state must be a boolean")
 
     def run(self, *, dry_run: bool = True) -> OperationResult:
+        if not isinstance(dry_run, bool):
+            raise TypeError("dry_run must be a boolean")
+
         if self.mutates_state and dry_run:
             return OperationResult(
                 success=True,

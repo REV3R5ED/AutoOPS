@@ -1,3 +1,5 @@
+import pytest
+
 from autoops.operations import Operation, OperationStatus
 
 
@@ -35,6 +37,22 @@ def test_mutating_operation_requires_explicit_dry_run_false():
     assert result.status is OperationStatus.SUCCESS
     assert calls == [True]
     assert result.data["changed"] is True
+
+
+def test_operation_rejects_non_boolean_mutation_flag():
+    with pytest.raises(TypeError, match="mutates_state must be a boolean"):
+        Operation("unsafe-definition", lambda: None, mutates_state=1)  # type: ignore[arg-type]
+
+
+def test_operation_rejects_non_boolean_dry_run_before_action_executes():
+    calls = []
+    operation = Operation("change-setting", lambda: calls.append(True), mutates_state=True)
+
+    for value in (0, 1, None, "false", "true"):
+        with pytest.raises(TypeError, match="dry_run must be a boolean"):
+            operation.run(dry_run=value)  # type: ignore[arg-type]
+
+    assert calls == []
 
 
 def test_operation_failure_is_normalized_without_leaking_exception_text():
