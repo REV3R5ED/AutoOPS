@@ -37,7 +37,7 @@ With disk thresholds configured, exit code `0` means the preflight is healthy, `
 
 ## Reporting and export
 
-Health checks support human-readable output plus stable JSON and CSV reports. CSV uses explicit, deterministic column schemas so exports remain suitable for spreadsheets, inventory snapshots, CI artifacts, and downstream operational tooling. `--json` and `--csv` are mutually exclusive to prevent ambiguous output. Nested values are rejected by the CSV serializer instead of being silently flattened or losing structure.
+Health checks support human-readable output plus stable JSON and CSV reports. CSV uses explicit, deterministic column schemas so exports remain suitable for spreadsheets, inventory snapshots, CI artifacts, and downstream operational tooling. `--json` and `--csv` are mutually exclusive to prevent ambiguous output. Nested values are rejected by the CSV serializer instead of being silently flattened or losing structure. As a defense-in-depth measure, CSV string values beginning with common spreadsheet formula prefixes (`=`, `+`, `-`, `@`) are prefixed with an apostrophe so operator-controlled text remains literal when a report is opened in spreadsheet software.
 
 ## Configuration
 
