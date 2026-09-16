@@ -55,10 +55,13 @@ class Operation:
         try:
             data = self.action() or {}
         except Exception as exc:  # Operation boundary intentionally normalizes failures.
+            # Exception text can contain credentials, tokens, paths, command output,
+            # or other sensitive runtime details. Keep the public result useful for
+            # diagnostics without propagating the exception message to reports/logs.
             return OperationResult(
                 success=False,
                 status=OperationStatus.FAILED,
-                message=f"{self.name} failed: {exc}",
+                message=f"{self.name} failed; sensitive exception details were suppressed.",
                 data={"operation": self.name, "error_type": type(exc).__name__},
             )
 
