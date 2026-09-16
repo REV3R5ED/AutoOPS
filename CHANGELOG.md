@@ -5,6 +5,8 @@ All notable changes to AutoOPS are documented here. The project follows semantic
 ## [Unreleased]
 
 ### Added
+- `autoops preflight` combines local environment and disk health into one flat human, JSON, or CSV report for support handoffs and CI prechecks.
+- `autoops preflight --fail-on-warning` preserves the diagnostic report while returning exit code 1 when the configured disk threshold is reached.
 - `autoops disk --fail-on-warning` for CI and monitoring workflows that need a non-zero exit status when the configured disk threshold is reached, while preserving the selected human, JSON, or CSV report.
 
 ## [0.2.0] - 2026-09-15
