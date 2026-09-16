@@ -1,5 +1,12 @@
+import pytest
+
 from autoops.operations import Operation, OperationStatus
 from autoops.workflows import Workflow
+
+
+def test_workflow_rejects_empty_operation_sequence():
+    with pytest.raises(ValueError, match="at least one operation"):
+        Workflow("empty", ())
 
 
 def test_workflow_runs_operations_in_order():
