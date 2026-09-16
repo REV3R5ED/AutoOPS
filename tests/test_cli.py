@@ -1,6 +1,18 @@
 import json
 
-from autoops.cli import main
+import pytest
+
+from autoops import __version__
+from autoops.cli import build_parser, main
+
+
+def test_cli_version_matches_package_version(capsys) -> None:
+    with pytest.raises(SystemExit) as exc_info:
+        build_parser().parse_args(["--version"])
+
+    assert exc_info.value.code == 0
+    assert capsys.readouterr().out.strip() == f"autoops {__version__}"
+    assert __version__ == "0.2.0"
 
 
 def test_disk_cli_json(tmp_path, capsys) -> None:

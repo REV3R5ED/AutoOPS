@@ -4,16 +4,32 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "autoops-toolkit"
-version = "0.1.0"
-description = "Safe automation utilities for repetitive IT operations"
+version = "0.2.0"
+description = "Safe, observable automation utilities for repetitive IT operations"
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
 authors = [{name = "REV3R5ED"}]
+keywords = ["automation", "it-operations", "diagnostics", "devops", "cybersecurity"]
 classifiers = [
-  "Programming Language :: Python :: 3",
+  "Development Status :: 4 - Beta",
+  "Environment :: Console",
+  "Intended Audience :: System Administrators",
+  "License :: OSI Approved :: MIT License",
   "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: System :: Systems Administration",
+  "Topic :: Utilities",
 ]
+
+[project.urls]
+Homepage = "https://github.com/REV3R5ED/AutoOPS"
+Repository = "https://github.com/REV3R5ED/AutoOPS"
+Issues = "https://github.com/REV3R5ED/AutoOPS/issues"
 
 [project.scripts]
 autoops = "autoops.cli:main"
