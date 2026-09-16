@@ -25,6 +25,7 @@ def test_disk_cli_json(tmp_path, capsys) -> None:
     assert 0 <= payload["used_percent"] <= 100
     assert payload["state"] in {"ok", "warning"}
     assert payload["warning_percent"] == 90.0
+    assert payload["min_free_gib"] is None
 
 
 def test_disk_cli_missing_path(tmp_path, capsys) -> None:
@@ -41,6 +42,17 @@ def test_cli_config_can_enable_json_and_threshold(tmp_path, capsys) -> None:
     assert result == 0
     assert payload["state"] == "warning"
     assert payload["warning_percent"] == 0.0
+
+
+def test_disk_min_free_threshold_can_trigger_warning(tmp_path, capsys) -> None:
+    config = tmp_path / "autoops.json"
+    config.write_text('{"disk_warning_percent": 100, "disk_min_free_gib": 1000000000}', encoding="utf-8")
+    result = main(["--config", str(config), "disk", str(tmp_path), "--json", "--fail-on-warning"])
+    payload = json.loads(capsys.readouterr().out)
+    assert result == 1
+    assert payload["state"] == "warning"
+    assert payload["warning_reason"] == "min_free_gib"
+    assert payload["min_free_gib"] == 1000000000.0
 
 
 def test_disk_fail_on_warning_returns_one_and_keeps_json_report(tmp_path, capsys) -> None:
@@ -82,7 +94,7 @@ def test_preflight_cli_json_combines_environment_and_disk(tmp_path, capsys) -> N
     result = main(["preflight", str(tmp_path), "--json"])
     payload = json.loads(capsys.readouterr().out)
     assert result == 0
-    assert payload["schema_version"] == PREFLIGHT_SCHEMA_VERSION == 3
+    assert payload["schema_version"] == PREFLIGHT_SCHEMA_VERSION == 4
     assert payload["autoops_version"] == __version__
     assert datetime.fromisoformat(payload["generated_at"].replace("Z", "+00:00")).tzinfo is not None
     assert payload["overall_state"] == payload["disk_state"]
@@ -91,6 +103,7 @@ def test_preflight_cli_json_combines_environment_and_disk(tmp_path, capsys) -> N
     assert payload["disk_path"] == str(tmp_path.resolve())
     assert 0 <= payload["disk_used_percent"] <= 100
     assert payload["disk_state"] in {"ok", "warning"}
+    assert payload["disk_min_free_gib"] is None
 
 
 def test_preflight_cli_csv_has_stable_flat_schema(tmp_path, capsys) -> None:
@@ -98,7 +111,7 @@ def test_preflight_cli_csv_has_stable_flat_schema(tmp_path, capsys) -> None:
     rows = list(csv.DictReader(io.StringIO(capsys.readouterr().out)))
     assert result == 0
     assert len(rows) == 1
-    assert rows[0]["schema_version"] == "3"
+    assert rows[0]["schema_version"] == "4"
     assert rows[0]["autoops_version"] == __version__
     assert datetime.fromisoformat(rows[0]["generated_at"].replace("Z", "+00:00")).tzinfo is not None
     assert rows[0]["overall_state"] == rows[0]["disk_state"]
@@ -111,7 +124,7 @@ def test_preflight_human_output_identifies_schema_and_tool_version(tmp_path, cap
     result = main(["preflight", str(tmp_path)])
     output = capsys.readouterr().out
     assert result == 0
-    assert f"Report schema: v3 | AutoOPS: {__version__}" in output
+    assert f"Report schema: v4 | AutoOPS: {__version__}" in output
     assert "Overall state:" in output
 
 
@@ -123,6 +136,16 @@ def test_preflight_fail_on_warning_preserves_report(tmp_path, capsys) -> None:
     assert result == 1
     assert payload["overall_state"] == "warning"
     assert payload["disk_state"] == "warning"
+
+
+def test_preflight_min_free_threshold_preserves_reason(tmp_path, capsys) -> None:
+    config = tmp_path / "autoops.json"
+    config.write_text('{"disk_warning_percent": 100, "disk_min_free_gib": 1000000000}', encoding="utf-8")
+    result = main(["--config", str(config), "preflight", str(tmp_path), "--json", "--fail-on-warning"])
+    payload = json.loads(capsys.readouterr().out)
+    assert result == 1
+    assert payload["overall_state"] == "warning"
+    assert payload["disk_warning_reason"] == "min_free_gib"
 
 
 def test_preflight_missing_path_is_operational_error(tmp_path, capsys) -> None:
