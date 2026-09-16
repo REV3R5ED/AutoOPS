@@ -33,7 +33,7 @@ A deployment or maintenance pipeline can capture a complete local preflight repo
 autoops --config autoops.json preflight / --json --fail-on-warning > preflight.json
 ```
 
-With `disk_warning_percent` configured, exit code `0` means the preflight is healthy, `1` means the disk threshold was reached, and `2` indicates an operational/configuration error. The report is still emitted for exit code `1`, so CI systems can retain diagnostic evidence as an artifact instead of losing context.
+With disk thresholds configured, exit code `0` means the preflight is healthy, `1` means a disk threshold was reached, and `2` indicates an operational/configuration error. The report is still emitted for exit code `1`, so CI systems can retain diagnostic evidence as an artifact instead of losing context.
 
 ## Reporting and export
 
@@ -52,11 +52,12 @@ Example:
 ```json
 {
   "json_output": true,
-  "disk_warning_percent": 85
+  "disk_warning_percent": 85,
+  "disk_min_free_gib": 10
 }
 ```
 
-`json_output` changes the default output mode and `disk_warning_percent` controls when disk checks report a `warning` state. Unknown keys, wrong types, malformed JSON, and thresholds outside 0–100 are rejected instead of being silently ignored. No config file is required; safe built-in defaults are used otherwise.
+`json_output` changes the default output mode. `disk_warning_percent` warns when used capacity reaches the configured percentage. Optional `disk_min_free_gib` also warns when absolute free capacity falls below the configured GiB value; this is useful for workloads that need predictable headroom even on large filesystems. When both thresholds are configured, either condition can trigger a warning and reports identify the warning reason. Unknown keys, wrong types, malformed JSON, negative minimum-free values, and percentage thresholds outside 0–100 are rejected instead of being silently ignored. No config file is required; safe built-in defaults are used otherwise.
 
 ## Operation safety contract
 
