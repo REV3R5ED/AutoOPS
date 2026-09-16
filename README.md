@@ -120,7 +120,8 @@ The logger recursively redacts values stored under common secret-bearing field n
 - [x] changelog and release notes
 - [x] package metadata and release readiness review
 - [x] portfolio-oriented usage examples
-- [ ] final CI/package sanity review and tagged portfolio release
+- [x] CI build and installed-wheel sanity coverage
+- [ ] tagged portfolio release
 
 ## Testing
 
@@ -129,7 +130,7 @@ python -m pip install -e . pytest
 pytest -q
 ```
 
-GitHub Actions runs the full test suite on Python 3.10–3.13 on Linux and adds Windows and macOS coverage on Python 3.12. CLI tests exercise local health checks and machine-readable reporting, catching platform-specific path, encoding, shell, and serialization regressions before release.
+GitHub Actions runs the full test suite on Python 3.10–3.13 on Linux and adds Windows and macOS coverage on Python 3.12. CLI smoke tests exercise disk, environment, and combined preflight reporting. The release-sanity job path also builds both source and wheel distributions, installs the generated wheel, checks the packaged CLI version, and runs a packaged preflight command so packaging regressions are caught before tagging a release.
 
 ## Safety
 
