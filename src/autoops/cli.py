@@ -39,7 +39,39 @@ def build_parser() -> argparse.ArgumentParser:
         "environment", help="Inspect runtime and host environment (read-only)"
     )
     _output_group(environment)
+
+    preflight = subparsers.add_parser(
+        "preflight", help="Run combined local environment and disk health checks (read-only)"
+    )
+    preflight.add_argument("path", nargs="?", default=".", help="Path whose filesystem capacity to inspect")
+    preflight.add_argument(
+        "--fail-on-warning",
+        action="store_true",
+        help="Return exit code 1 when disk usage meets the warning threshold",
+    )
+    _output_group(preflight)
     return parser
+
+
+def _preflight_payload(path: str, warning_percent: float) -> dict[str, object]:
+    environment = environment_status()
+    disk = disk_status(path)
+    state = "warning" if disk.used_percent >= warning_percent else "ok"
+    return {
+        "hostname": environment.hostname,
+        "platform": environment.platform,
+        "platform_release": environment.platform_release,
+        "architecture": environment.architecture,
+        "python_version": environment.python_version,
+        "cpu_count": environment.cpu_count,
+        "disk_path": disk.path,
+        "disk_total_bytes": disk.total_bytes,
+        "disk_used_bytes": disk.used_bytes,
+        "disk_free_bytes": disk.free_bytes,
+        "disk_used_percent": disk.used_percent,
+        "disk_state": state,
+        "disk_warning_percent": warning_percent,
+    }
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -85,6 +117,29 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Python: {status.python_version}")
             print(f"CPU count: {status.cpu_count if status.cpu_count is not None else 'unknown'}")
         return 0
+
+    if args.command == "preflight":
+        try:
+            payload = _preflight_payload(args.path, config.disk_warning_percent)
+        except (FileNotFoundError, OSError) as exc:
+            print(f"error: {exc}")
+            return 2
+
+        fields = (
+            "hostname", "platform", "platform_release", "architecture", "python_version", "cpu_count",
+            "disk_path", "disk_total_bytes", "disk_used_bytes", "disk_free_bytes", "disk_used_percent",
+            "disk_state", "disk_warning_percent",
+        )
+        if args.as_csv:
+            print(to_csv(payload, fields=fields), end="")
+        elif args.as_json or config.json_output:
+            print(json.dumps(payload, sort_keys=True))
+        else:
+            print(f"Host: {payload['hostname']} — {payload['platform']} {payload['platform_release']} ({payload['architecture']})")
+            print(f"Python: {payload['python_version']} | CPU count: {payload['cpu_count'] if payload['cpu_count'] is not None else 'unknown'}")
+            print(f"Disk: {payload['disk_path']} — {payload['disk_used_percent']:.2f}% used")
+            print(f"State: {payload['disk_state']} (warning at {payload['disk_warning_percent']:.1f}%)")
+        return 1 if args.fail_on_warning and payload["disk_state"] == "warning" else 0
 
     return 1
 
