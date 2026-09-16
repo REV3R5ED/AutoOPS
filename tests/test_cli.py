@@ -94,8 +94,9 @@ def test_preflight_cli_json_combines_environment_and_disk(tmp_path, capsys) -> N
     payload = json.loads(capsys.readouterr().out)
 
     assert result == 0
-    assert payload["schema_version"] == PREFLIGHT_SCHEMA_VERSION == 1
+    assert payload["schema_version"] == PREFLIGHT_SCHEMA_VERSION == 2
     assert datetime.fromisoformat(payload["generated_at"].replace("Z", "+00:00")).tzinfo is not None
+    assert payload["overall_state"] == payload["disk_state"]
     assert payload["hostname"]
     assert payload["python_version"]
     assert payload["disk_path"] == str(tmp_path.resolve())
@@ -109,18 +110,21 @@ def test_preflight_cli_csv_has_stable_flat_schema(tmp_path, capsys) -> None:
 
     assert result == 0
     assert len(rows) == 1
-    assert rows[0]["schema_version"] == "1"
+    assert rows[0]["schema_version"] == "2"
     assert datetime.fromisoformat(rows[0]["generated_at"].replace("Z", "+00:00")).tzinfo is not None
+    assert rows[0]["overall_state"] == rows[0]["disk_state"]
     assert rows[0]["disk_path"] == str(tmp_path.resolve())
     assert rows[0]["hostname"]
     assert rows[0]["disk_state"] in {"ok", "warning"}
 
 
-def test_preflight_human_output_identifies_schema_version(tmp_path, capsys) -> None:
+def test_preflight_human_output_identifies_schema_and_overall_state(tmp_path, capsys) -> None:
     result = main(["preflight", str(tmp_path)])
+    output = capsys.readouterr().out
 
     assert result == 0
-    assert "Report schema: v1" in capsys.readouterr().out
+    assert "Report schema: v2" in output
+    assert "Overall state:" in output
 
 
 def test_preflight_fail_on_warning_preserves_report(tmp_path, capsys) -> None:
@@ -131,6 +135,7 @@ def test_preflight_fail_on_warning_preserves_report(tmp_path, capsys) -> None:
     payload = json.loads(capsys.readouterr().out)
 
     assert result == 1
+    assert payload["overall_state"] == "warning"
     assert payload["disk_state"] == "warning"
 
 
