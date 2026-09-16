@@ -26,10 +26,17 @@ def test_to_csv_neutralizes_spreadsheet_formula_prefixes(value: str) -> None:
     assert rows == [{"value": "'" + value}]
 
 
-def test_to_csv_does_not_modify_ordinary_strings_or_numbers() -> None:
-    text = to_csv({"label": "healthy", "value": 42}, fields=("label", "value"))
+@pytest.mark.parametrize("value", [" =1+1", "\t+cmd", "\r-2+3", "\n@SUM(A1:A2)"])
+def test_to_csv_neutralizes_formula_prefixes_after_leading_whitespace(value: str) -> None:
+    text = to_csv({"value": value}, fields=("value",))
     rows = list(csv.DictReader(io.StringIO(text)))
-    assert rows == [{"label": "healthy", "value": "42"}]
+    assert rows == [{"value": "'" + value}]
+
+
+def test_to_csv_does_not_modify_ordinary_strings_or_numbers() -> None:
+    text = to_csv({"label": " healthy", "value": 42}, fields=("label", "value"))
+    rows = list(csv.DictReader(io.StringIO(text)))
+    assert rows == [{"label": " healthy", "value": "42"}]
 
 
 def test_disk_cli_csv(tmp_path, capsys) -> None:

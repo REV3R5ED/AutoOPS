@@ -5,6 +5,7 @@ All notable changes to AutoOPS are documented here. The project follows semantic
 ## [Unreleased]
 
 ### Added
+- CSV reporting now neutralizes formula-like strings even when they are preceded by spaces, tabs, carriage returns, or newlines that spreadsheet applications may ignore before formula interpretation, closing a whitespace-prefix bypass while preserving the original cell text.
 - CSV reporting now neutralizes string values beginning with common spreadsheet formula prefixes (`=`, `+`, `-`, `@`) so operator-controlled paths, hostnames, or future diagnostic text remain literal when exported reports are opened in spreadsheet applications.
 - Disk and preflight health gates can now enforce an optional `disk_min_free_gib` threshold in addition to percentage-used limits. Machine-readable reports identify the threshold and warning reason, allowing operators to protect workloads that require a known amount of free capacity even on very large filesystems. The preflight report schema is now version `4` to make this additive contract change explicit.
 - `autoops preflight` reports now include the running `autoops_version` in human, JSON, and CSV output so archived CI/support artifacts remain attributable to the exact tool version that produced them. The preflight report schema is now version `3` to make this additive contract change explicit.
