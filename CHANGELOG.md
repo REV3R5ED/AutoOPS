@@ -36,3 +36,21 @@ All notable changes to AutoOPS are documented here. The project follows semantic
 - Stable JSON and CSV reporting for disk and environment checks.
 - Structured NDJSON audit logging with defense-in-depth redaction of common secret-bearing fields.
 - Explicit JSON configuration with strict validation and safe defaults.
+- Cross-platform CI coverage on Linux, Windows, and macOS.
+
+### Changed
+- Package and CLI version metadata aligned at `0.2.0`.
+- Package metadata expanded for Python 3.10–3.13 and systems-administration use cases.
+
+### Safety
+- State-changing operations remain dry-run by default and require explicit operator intent to execute.
+- Health checks are local and read-only; they do not probe remote systems.
+- Logging never writes files implicitly and redacts common secret-bearing fields before serialization.
+
+## [0.1.0]
+
+### Added
+- Initial Python package and CLI foundation.
+- Common operation/result model and dry-run framework.
+- Disk capacity health check.
+- Unit tests and GitHub Actions CI.
