@@ -53,7 +53,7 @@ class Operation:
             )
 
         try:
-            data = self.action() or {}
+            data = self.action()
         except Exception as exc:  # Operation boundary intentionally normalizes failures.
             # Exception text can contain credentials, tokens, paths, command output,
             # or other sensitive runtime details. Keep the public result useful for
@@ -63,6 +63,16 @@ class Operation:
                 status=OperationStatus.FAILED,
                 message=f"{self.name} failed; sensitive exception details were suppressed.",
                 data={"operation": self.name, "error_type": type(exc).__name__},
+            )
+
+        if data is None:
+            data = {}
+        elif not isinstance(data, dict):
+            return OperationResult(
+                success=False,
+                status=OperationStatus.FAILED,
+                message=f"{self.name} failed; operation returned an invalid result type.",
+                data={"operation": self.name, "error_type": "InvalidResultType"},
             )
 
         return OperationResult(

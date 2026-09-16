@@ -53,3 +53,20 @@ def test_operation_failure_is_normalized_without_leaking_exception_text():
     assert "request failed" not in result.message
     assert "suppressed" in result.message
     assert secret not in str(result.to_dict())
+
+
+def test_operation_none_result_is_normalized_to_empty_data():
+    result = Operation("no-data", lambda: None).run()
+
+    assert result.success is True
+    assert result.status is OperationStatus.SUCCESS
+    assert result.data == {"operation": "no-data"}
+
+
+def test_operation_invalid_result_type_is_normalized_failure():
+    result = Operation("bad-result", lambda: ["unexpected", "list"]).run()
+
+    assert result.success is False
+    assert result.status is OperationStatus.FAILED
+    assert result.message == "bad-result failed; operation returned an invalid result type."
+    assert result.data == {"operation": "bad-result", "error_type": "InvalidResultType"}
