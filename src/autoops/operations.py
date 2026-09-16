@@ -38,6 +38,8 @@ class Operation:
     Callers should default to dry-run when exposing these operations through
     user-facing interfaces. Boolean safety flags are validated strictly so
     loosely typed programmatic callers cannot accidentally authorize mutation.
+    Operation names reject control characters so audit and terminal output
+    cannot be structurally altered by malformed automation definitions.
     """
 
     name: str
@@ -47,6 +49,8 @@ class Operation:
     def __post_init__(self) -> None:
         if not isinstance(self.name, str) or not self.name.strip():
             raise ValueError("operation name must be a non-empty string")
+        if any(ord(character) < 32 or ord(character) == 127 for character in self.name):
+            raise ValueError("operation name must not contain control characters")
         if not callable(self.action):
             raise TypeError("operation action must be callable")
         if not isinstance(self.mutates_state, bool):
