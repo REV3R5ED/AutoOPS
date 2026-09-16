@@ -2,7 +2,7 @@
 
 Practical automation scripts and utilities for repetitive IT operations.
 
-> Status: active development / v0.2
+> Status: active development / v0.2 release hardening
 
 ## Goals
 
@@ -12,23 +12,32 @@ Planned areas include system/environment checks, file maintenance workflows, ser
 
 ## Health checks
 
-AutoOPS currently provides two cross-platform, read-only operational checks:
+AutoOPS provides cross-platform, read-only operational checks:
 
 ```bash
 python -m pip install -e .
 autoops disk .
 autoops disk /path/to/check --json
-autoops disk /path/to/check --csv
-autoops environment
 autoops environment --json
-autoops environment --csv
+autoops preflight .
+autoops preflight /path/to/check --json --fail-on-warning
 ```
 
-`disk` summarizes used/free filesystem capacity and warning state. `environment` captures a compact preflight snapshot containing hostname, operating system/release, machine architecture, Python version, and logical CPU count. Neither command changes system state or probes remote hosts.
+`disk` summarizes used/free filesystem capacity and warning state. `environment` captures a compact preflight snapshot containing hostname, operating system/release, machine architecture, Python version, and logical CPU count. `preflight` combines both checks into one flat report for support handoffs, CI prechecks, and repeatable workstation/server diagnostics. All three commands are local and read-only; none changes system state or probes remote hosts.
+
+### Portfolio example: CI health gate
+
+A deployment or maintenance pipeline can capture a complete local preflight report while treating disk pressure as a controlled warning failure:
+
+```bash
+autoops --config autoops.json preflight / --json --fail-on-warning > preflight.json
+```
+
+With `disk_warning_percent` configured, exit code `0` means the preflight is healthy, `1` means the disk threshold was reached, and `2` indicates an operational/configuration error. The report is still emitted for exit code `1`, so CI systems can retain diagnostic evidence as an artifact instead of losing context.
 
 ## Reporting and export
 
-Both health checks support human-readable output plus stable JSON and CSV reports. CSV uses explicit, deterministic column schemas so exports remain suitable for spreadsheets, inventory snapshots, CI artifacts, and downstream operational tooling. `--json` and `--csv` are mutually exclusive to prevent ambiguous output. Nested values are rejected by the CSV serializer instead of being silently flattened or losing structure.
+Health checks support human-readable output plus stable JSON and CSV reports. CSV uses explicit, deterministic column schemas so exports remain suitable for spreadsheets, inventory snapshots, CI artifacts, and downstream operational tooling. `--json` and `--csv` are mutually exclusive to prevent ambiguous output. Nested values are rejected by the CSV serializer instead of being silently flattened or losing structure.
 
 ## Configuration
 
@@ -47,7 +56,7 @@ Example:
 }
 ```
 
-`json_output` changes the default output mode and `disk_warning_percent` controls when the disk check reports a `warning` state. CLI `--json` can still opt into JSON for an individual invocation. Unknown keys, wrong types, malformed JSON, and thresholds outside 0–100 are rejected instead of being silently ignored. No config file is required; safe built-in defaults are used otherwise.
+`json_output` changes the default output mode and `disk_warning_percent` controls when disk checks report a `warning` state. Unknown keys, wrong types, malformed JSON, and thresholds outside 0–100 are rejected instead of being silently ignored. No config file is required; safe built-in defaults are used otherwise.
 
 ## Operation safety contract
 
@@ -81,15 +90,6 @@ result = workflow.run()  # planned-change is dry-run by default
 
 The logger recursively redacts values stored under common secret-bearing field names such as passwords, tokens, API keys, secrets, and credentials before serialization. It never writes files implicitly: callers choose the destination stream, keeping logging behavior explicit and testable.
 
-```python
-from autoops.logging import write_json_event
-
-with open("autoops.ndjson", "a", encoding="utf-8") as stream:
-    write_json_event(result, stream)
-```
-
-Applications should still avoid placing sensitive material in operation results in the first place; redaction is a defense-in-depth safeguard, not a secret-management system.
-
 ## Design Principles
 
 - safe defaults
@@ -117,9 +117,10 @@ Applications should still avoid placing sensitive material in operation results 
 - [x] improved cross-platform behavior
 
 ### Next — Release hardening
-- [ ] changelog and release notes
-- [ ] package metadata and release readiness review
-- [ ] portfolio-oriented usage examples
+- [x] changelog and release notes
+- [x] package metadata and release readiness review
+- [x] portfolio-oriented usage examples
+- [ ] final CI/package sanity review and tagged portfolio release
 
 ## Testing
 
@@ -128,11 +129,11 @@ python -m pip install -e . pytest
 pytest -q
 ```
 
-GitHub Actions runs the full test suite on Python 3.10–3.13 on Linux and adds Windows and macOS coverage on Python 3.12. CLI smoke tests exercise both health checks in JSON and CSV modes on every matrix target, catching platform-specific path, encoding, shell, and serialization regressions before release.
+GitHub Actions runs the full test suite on Python 3.10–3.13 on Linux and adds Windows and macOS coverage on Python 3.12. CLI tests exercise local health checks and machine-readable reporting, catching platform-specific path, encoding, shell, and serialization regressions before release.
 
 ## Safety
 
-AutoOPS is intended for systems you own or administer with authorization. Current health-check functionality is read-only. Disk inspection reads local filesystem capacity; environment inspection reads only local runtime/host metadata and performs no remote probing. The operation and workflow contracts ensure future state-changing automation is dry-run by default and requires explicit operator intent before execution. Workflows fail fast by default, reducing the chance that dependent later actions run after an unsuccessful prerequisite. Configuration is local and deliberately limited to documented keys; it does not load or execute code. Structured logging redacts common secret-bearing fields and writes only to streams explicitly supplied by the caller. Reporting only serializes already-collected result data and performs no system changes. Destructive or irreversible features should additionally provide feature-specific safeguards.
+AutoOPS is intended for systems you own or administer with authorization. Current health-check functionality is read-only and performs no remote probing. The operation and workflow contracts ensure future state-changing automation is dry-run by default and requires explicit operator intent before execution. Configuration is local and deliberately limited to documented keys; it does not load or execute code. Structured logging redacts common secret-bearing fields and writes only to streams explicitly supplied by the caller. Reporting only serializes already-collected result data and performs no system changes. Destructive or irreversible features should additionally provide feature-specific safeguards.
 
 ## Development
 
