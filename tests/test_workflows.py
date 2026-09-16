@@ -24,6 +24,23 @@ def test_workflow_rejects_non_operation_members():
         Workflow("invalid", (Operation("check", lambda: None), "not-an-operation"))
 
 
+def test_workflow_rejects_non_boolean_fail_fast():
+    for value in (0, 1, None, "false", "true"):
+        with pytest.raises(TypeError, match="fail_fast must be a boolean"):
+            Workflow("invalid-control", (Operation("check", lambda: None),), fail_fast=value)  # type: ignore[arg-type]
+
+
+def test_workflow_rejects_non_boolean_dry_run_before_any_operation_executes():
+    calls = []
+    workflow = Workflow("safe-control", (Operation("check", lambda: calls.append(True)),))
+
+    for value in (0, 1, None, "false", "true"):
+        with pytest.raises(TypeError, match="dry_run must be a boolean"):
+            workflow.run(dry_run=value)  # type: ignore[arg-type]
+
+    assert calls == []
+
+
 def test_workflow_runs_operations_in_order():
     calls = []
     workflow = Workflow(

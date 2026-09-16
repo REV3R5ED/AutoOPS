@@ -32,8 +32,10 @@ class Workflow:
     Workflows fail fast by default so later steps do not run after a failure.
     The workflow-level ``dry_run`` value is passed to every operation; therefore
     mutating operations remain dry-run unless execution is explicitly requested.
-    Malformed workflow definitions are rejected at construction time so they
-    cannot produce ambiguous audit identities or fail partway through execution.
+    Boolean control flags are validated strictly so loosely typed callers cannot
+    silently change fail-fast or dry-run semantics. Malformed workflow definitions
+    are rejected at construction time so they cannot produce ambiguous audit
+    identities or fail partway through execution.
     """
 
     name: str
@@ -47,8 +49,13 @@ class Workflow:
             raise ValueError("workflow must contain at least one operation")
         if any(not isinstance(operation, Operation) for operation in self.operations):
             raise TypeError("workflow operations must contain only Operation instances")
+        if not isinstance(self.fail_fast, bool):
+            raise TypeError("fail_fast must be a boolean")
 
     def run(self, *, dry_run: bool = True) -> WorkflowResult:
+        if not isinstance(dry_run, bool):
+            raise TypeError("dry_run must be a boolean")
+
         results: list[OperationResult] = []
         stopped_early = False
 
