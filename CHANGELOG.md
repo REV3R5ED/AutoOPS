@@ -5,6 +5,7 @@ All notable changes to AutoOPS are documented here. The project follows semantic
 ## [Unreleased]
 
 ### Added
+- `autoops preflight` reports now include the running `autoops_version` in human, JSON, and CSV output so archived CI/support artifacts remain attributable to the exact tool version that produced them. The preflight report schema is now version `3` to make this additive contract change explicit.
 - `autoops preflight` now exposes a top-level `overall_state` in human, JSON, and CSV reports so CI and support tooling can consume one stable aggregate health signal without coupling to individual check fields. The preflight report schema is now version `2` to make this additive contract change explicit.
 - `autoops preflight` reports now carry an explicit `schema_version` in human, JSON, and CSV output, giving downstream CI/support tooling a stable compatibility marker as the report evolves.
 - `autoops preflight` reports now include a timezone-aware UTC `generated_at` timestamp in human, JSON, and CSV output so saved diagnostics remain attributable and useful as CI/support artifacts.
