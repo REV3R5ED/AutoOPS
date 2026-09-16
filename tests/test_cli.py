@@ -1,6 +1,7 @@
 import csv
 import io
 import json
+from datetime import datetime
 
 import pytest
 
@@ -93,6 +94,7 @@ def test_preflight_cli_json_combines_environment_and_disk(tmp_path, capsys) -> N
     payload = json.loads(capsys.readouterr().out)
 
     assert result == 0
+    assert datetime.fromisoformat(payload["generated_at"].replace("Z", "+00:00")).tzinfo is not None
     assert payload["hostname"]
     assert payload["python_version"]
     assert payload["disk_path"] == str(tmp_path.resolve())
@@ -106,6 +108,7 @@ def test_preflight_cli_csv_has_stable_flat_schema(tmp_path, capsys) -> None:
 
     assert result == 0
     assert len(rows) == 1
+    assert datetime.fromisoformat(rows[0]["generated_at"].replace("Z", "+00:00")).tzinfo is not None
     assert rows[0]["disk_path"] == str(tmp_path.resolve())
     assert rows[0]["hostname"]
     assert rows[0]["disk_state"] in {"ok", "warning"}
