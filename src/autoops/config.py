@@ -14,10 +14,11 @@ class Config:
 
     json_output: bool = False
     disk_warning_percent: float = 90.0
+    disk_min_free_gib: float | None = None
 
     @classmethod
     def from_mapping(cls, values: dict[str, Any]) -> "Config":
-        allowed = {"json_output", "disk_warning_percent"}
+        allowed = {"json_output", "disk_warning_percent", "disk_min_free_gib"}
         unknown = sorted(set(values) - allowed)
         if unknown:
             raise ValueError(f"Unknown configuration key(s): {', '.join(unknown)}")
@@ -33,7 +34,19 @@ class Config:
         if not 0 <= warning <= 100:
             raise ValueError("disk_warning_percent must be between 0 and 100")
 
-        return cls(json_output=json_output, disk_warning_percent=warning)
+        min_free = values.get("disk_min_free_gib")
+        if min_free is not None:
+            if isinstance(min_free, bool) or not isinstance(min_free, (int, float)):
+                raise ValueError("disk_min_free_gib must be a number or null")
+            min_free = float(min_free)
+            if min_free < 0:
+                raise ValueError("disk_min_free_gib must be greater than or equal to 0")
+
+        return cls(
+            json_output=json_output,
+            disk_warning_percent=warning,
+            disk_min_free_gib=min_free,
+        )
 
 
 def load_config(path: str | Path | None) -> Config:
