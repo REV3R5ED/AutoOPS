@@ -11,12 +11,13 @@ def test_load_config_defaults() -> None:
 
 def test_load_config_from_json(tmp_path) -> None:
     path = tmp_path / "autoops.json"
-    path.write_text(json.dumps({"json_output": True, "disk_warning_percent": 75}), encoding="utf-8")
+    path.write_text(json.dumps({"json_output": True, "disk_warning_percent": 75, "disk_min_free_gib": 10}), encoding="utf-8")
 
     config = load_config(path)
 
     assert config.json_output is True
     assert config.disk_warning_percent == 75.0
+    assert config.disk_min_free_gib == 10.0
 
 
 @pytest.mark.parametrize(
@@ -26,6 +27,8 @@ def test_load_config_from_json(tmp_path) -> None:
         {"json_output": "yes"},
         {"disk_warning_percent": -1},
         {"disk_warning_percent": 101},
+        {"disk_min_free_gib": -1},
+        {"disk_min_free_gib": "ten"},
     ],
 )
 def test_invalid_config_is_rejected(tmp_path, payload) -> None:
