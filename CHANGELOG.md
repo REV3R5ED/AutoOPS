@@ -5,6 +5,7 @@ All notable changes to AutoOPS are documented here. The project follows semantic
 ## [Unreleased]
 
 ### Added
+- Workflows now reject an empty operation sequence at construction time, preventing configuration mistakes from being reported as successful automation runs when no checks or actions actually executed.
 - Operation actions that accidentally return a non-dictionary value are now normalized into a stable failed `OperationResult` instead of raising during result assembly, preserving the operation boundary contract for future automation modules.
 - Operation failures now suppress raw exception messages while retaining the operation name and exception type, preventing credentials, tokens, command output, paths, or other sensitive runtime details embedded in exceptions from leaking into serialized results, reports, or downstream logs.
 - CSV reporting now neutralizes formula-like strings even when they are preceded by spaces, tabs, carriage returns, or newlines that spreadsheet applications may ignore before formula interpretation, closing a whitespace-prefix bypass while preserving the original cell text.
