@@ -70,3 +70,12 @@ def test_operation_invalid_result_type_is_normalized_failure():
     assert result.status is OperationStatus.FAILED
     assert result.message == "bad-result failed; operation returned an invalid result type."
     assert result.data == {"operation": "bad-result", "error_type": "InvalidResultType"}
+
+
+def test_operation_cannot_override_reserved_operation_metadata():
+    result = Operation("trusted-name", lambda: {"operation": "spoofed-name", "value": 42}).run()
+
+    assert result.success is False
+    assert result.status is OperationStatus.FAILED
+    assert result.message == "trusted-name failed; operation returned reserved result metadata."
+    assert result.data == {"operation": "trusted-name", "error_type": "ReservedResultKey"}

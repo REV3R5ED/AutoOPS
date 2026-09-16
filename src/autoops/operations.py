@@ -74,6 +74,13 @@ class Operation:
                 message=f"{self.name} failed; operation returned an invalid result type.",
                 data={"operation": self.name, "error_type": "InvalidResultType"},
             )
+        elif "operation" in data:
+            return OperationResult(
+                success=False,
+                status=OperationStatus.FAILED,
+                message=f"{self.name} failed; operation returned reserved result metadata.",
+                data={"operation": self.name, "error_type": "ReservedResultKey"},
+            )
 
         return OperationResult(
             success=True,

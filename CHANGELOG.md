@@ -5,6 +5,7 @@ All notable changes to AutoOPS are documented here. The project follows semantic
 ## [Unreleased]
 
 ### Added
+- Operation result payloads now reject the reserved `operation` metadata key, preventing an action from spoofing its identity in serialized reports, logs, or workflow results.
 - Numeric disk thresholds now reject non-finite values (`NaN` and positive/negative infinity), preventing malformed programmatic configuration from bypassing safety bounds or producing ambiguous health-check results.
 - Workflows now reject an empty operation sequence at construction time, preventing configuration mistakes from being reported as successful automation runs when no checks or actions actually executed.
 - Operation actions that accidentally return a non-dictionary value are now normalized into a stable failed `OperationResult` instead of raising during result assembly, preserving the operation boundary contract for future automation modules.
