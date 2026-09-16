@@ -11,7 +11,7 @@ from autoops.checks import disk_status, environment_status
 from autoops.config import load_config
 from autoops.reporting import to_csv
 
-PREFLIGHT_SCHEMA_VERSION = 1
+PREFLIGHT_SCHEMA_VERSION = 2
 
 
 def _output_group(parser: argparse.ArgumentParser) -> None:
@@ -63,6 +63,7 @@ def _preflight_payload(path: str, warning_percent: float) -> dict[str, object]:
     return {
         "schema_version": PREFLIGHT_SCHEMA_VERSION,
         "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "overall_state": state,
         "hostname": environment.hostname,
         "platform": environment.platform,
         "platform_release": environment.platform_release,
@@ -131,7 +132,7 @@ def main(argv: list[str] | None = None) -> int:
             return 2
 
         fields = (
-            "schema_version", "generated_at", "hostname", "platform", "platform_release", "architecture", "python_version", "cpu_count",
+            "schema_version", "generated_at", "overall_state", "hostname", "platform", "platform_release", "architecture", "python_version", "cpu_count",
             "disk_path", "disk_total_bytes", "disk_used_bytes", "disk_free_bytes", "disk_used_percent",
             "disk_state", "disk_warning_percent",
         )
@@ -142,11 +143,12 @@ def main(argv: list[str] | None = None) -> int:
         else:
             print(f"Report schema: v{payload['schema_version']}")
             print(f"Generated: {payload['generated_at']}")
+            print(f"Overall state: {payload['overall_state']}")
             print(f"Host: {payload['hostname']} — {payload['platform']} {payload['platform_release']} ({payload['architecture']})")
             print(f"Python: {payload['python_version']} | CPU count: {payload['cpu_count'] if payload['cpu_count'] is not None else 'unknown'}")
             print(f"Disk: {payload['disk_path']} — {payload['disk_used_percent']:.2f}% used")
             print(f"State: {payload['disk_state']} (warning at {payload['disk_warning_percent']:.1f}%)")
-        return 1 if args.fail_on_warning and payload["disk_state"] == "warning" else 0
+        return 1 if args.fail_on_warning and payload["overall_state"] == "warning" else 0
 
     return 1
 
