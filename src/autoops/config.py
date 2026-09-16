@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import json
+import math
 from pathlib import Path
 from typing import Any
 
@@ -31,6 +32,8 @@ class Config:
         if isinstance(warning, bool) or not isinstance(warning, (int, float)):
             raise ValueError("disk_warning_percent must be a number")
         warning = float(warning)
+        if not math.isfinite(warning):
+            raise ValueError("disk_warning_percent must be finite")
         if not 0 <= warning <= 100:
             raise ValueError("disk_warning_percent must be between 0 and 100")
 
@@ -39,6 +42,8 @@ class Config:
             if isinstance(min_free, bool) or not isinstance(min_free, (int, float)):
                 raise ValueError("disk_min_free_gib must be a number or null")
             min_free = float(min_free)
+            if not math.isfinite(min_free):
+                raise ValueError("disk_min_free_gib must be finite")
             if min_free < 0:
                 raise ValueError("disk_min_free_gib must be greater than or equal to 0")
 

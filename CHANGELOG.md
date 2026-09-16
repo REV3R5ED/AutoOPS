@@ -5,6 +5,7 @@ All notable changes to AutoOPS are documented here. The project follows semantic
 ## [Unreleased]
 
 ### Added
+- Numeric disk thresholds now reject non-finite values (`NaN` and positive/negative infinity), preventing malformed programmatic configuration from bypassing safety bounds or producing ambiguous health-check results.
 - Workflows now reject an empty operation sequence at construction time, preventing configuration mistakes from being reported as successful automation runs when no checks or actions actually executed.
 - Operation actions that accidentally return a non-dictionary value are now normalized into a stable failed `OperationResult` instead of raising during result assembly, preserving the operation boundary contract for future automation modules.
 - Operation failures now suppress raw exception messages while retaining the operation name and exception type, preventing credentials, tokens, command output, paths, or other sensitive runtime details embedded in exceptions from leaking into serialized results, reports, or downstream logs.
@@ -12,7 +13,7 @@ All notable changes to AutoOPS are documented here. The project follows semantic
 - CSV reporting now neutralizes string values beginning with common spreadsheet formula prefixes (`=`, `+`, `-`, `@`) so operator-controlled paths, hostnames, or future diagnostic text remain literal when exported reports are opened in spreadsheet applications.
 - Disk and preflight health gates can now enforce an optional `disk_min_free_gib` threshold in addition to percentage-used limits. Machine-readable reports identify the threshold and warning reason, allowing operators to protect workloads that require a known amount of free capacity even on very large filesystems. The preflight report schema is now version `4` to make this additive contract change explicit.
 - `autoops preflight` reports now include the running `autoops_version` in human, JSON, and CSV output so archived CI/support artifacts remain attributable to the exact tool version that produced them. The preflight report schema is now version `3` to make this additive contract change explicit.
-- `autoops preflight` now exposes a top-level `overall_state` in human, JSON, and CSV reports so CI and support tooling can consume one stable aggregate health signal without coupling to individual check fields. The preflight report schema is now version `2` to make this additive contract change explicit.
+- `autoops preflight` reports now expose a top-level `overall_state` in human, JSON, and CSV reports so CI and support tooling can consume one stable aggregate health signal without coupling to individual check fields. The preflight report schema is now version `2` to make this additive contract change explicit.
 - `autoops preflight` reports now carry an explicit `schema_version` in human, JSON, and CSV output, giving downstream CI/support tooling a stable compatibility marker as the report evolves.
 - `autoops preflight` reports now include a timezone-aware UTC `generated_at` timestamp in human, JSON, and CSV output so saved diagnostics remain attributable and useful as CI/support artifacts.
 - `autoops preflight` combines local environment and disk health into one flat human, JSON, or CSV report for support handoffs and CI prechecks.
