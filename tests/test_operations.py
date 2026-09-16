@@ -37,13 +37,19 @@ def test_mutating_operation_requires_explicit_dry_run_false():
     assert result.data["changed"] is True
 
 
-def test_operation_failure_is_normalized():
+def test_operation_failure_is_normalized_without_leaking_exception_text():
+    secret = "api-token-super-secret"
+
     def fail():
-        raise RuntimeError("boom")
+        raise RuntimeError(f"request failed with token {secret}")
 
     result = Operation("failing-check", fail).run()
 
     assert result.success is False
     assert result.status is OperationStatus.FAILED
     assert result.data["error_type"] == "RuntimeError"
-    assert "boom" in result.message
+    assert result.data["operation"] == "failing-check"
+    assert secret not in result.message
+    assert "request failed" not in result.message
+    assert "suppressed" in result.message
+    assert secret not in str(result.to_dict())
