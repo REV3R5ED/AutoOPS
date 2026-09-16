@@ -1,3 +1,5 @@
+import csv
+import io
 import json
 
 import pytest
@@ -49,14 +51,7 @@ def test_disk_fail_on_warning_returns_one_and_keeps_json_report(tmp_path, capsys
     config = tmp_path / "autoops.json"
     config.write_text('{"disk_warning_percent": 0}', encoding="utf-8")
 
-    result = main([
-        "--config",
-        str(config),
-        "disk",
-        str(tmp_path),
-        "--json",
-        "--fail-on-warning",
-    ])
+    result = main(["--config", str(config), "disk", str(tmp_path), "--json", "--fail-on-warning"])
     payload = json.loads(capsys.readouterr().out)
 
     assert result == 1
@@ -68,13 +63,7 @@ def test_disk_fail_on_warning_does_not_fail_healthy_check(tmp_path, capsys) -> N
     config = tmp_path / "autoops.json"
     config.write_text('{"disk_warning_percent": 100}', encoding="utf-8")
 
-    result = main([
-        "--config",
-        str(config),
-        "disk",
-        str(tmp_path),
-        "--fail-on-warning",
-    ])
+    result = main(["--config", str(config), "disk", str(tmp_path), "--fail-on-warning"])
 
     assert result == 0
     assert "State: ok" in capsys.readouterr().out
@@ -97,3 +86,44 @@ def test_environment_cli_json(capsys) -> None:
     assert payload["platform"]
     assert payload["python_version"]
     assert payload["cpu_count"] is None or payload["cpu_count"] >= 1
+
+
+def test_preflight_cli_json_combines_environment_and_disk(tmp_path, capsys) -> None:
+    result = main(["preflight", str(tmp_path), "--json"])
+    payload = json.loads(capsys.readouterr().out)
+
+    assert result == 0
+    assert payload["hostname"]
+    assert payload["python_version"]
+    assert payload["disk_path"] == str(tmp_path.resolve())
+    assert 0 <= payload["disk_used_percent"] <= 100
+    assert payload["disk_state"] in {"ok", "warning"}
+
+
+def test_preflight_cli_csv_has_stable_flat_schema(tmp_path, capsys) -> None:
+    result = main(["preflight", str(tmp_path), "--csv"])
+    rows = list(csv.DictReader(io.StringIO(capsys.readouterr().out)))
+
+    assert result == 0
+    assert len(rows) == 1
+    assert rows[0]["disk_path"] == str(tmp_path.resolve())
+    assert rows[0]["hostname"]
+    assert rows[0]["disk_state"] in {"ok", "warning"}
+
+
+def test_preflight_fail_on_warning_preserves_report(tmp_path, capsys) -> None:
+    config = tmp_path / "autoops.json"
+    config.write_text('{"disk_warning_percent": 0}', encoding="utf-8")
+
+    result = main(["--config", str(config), "preflight", str(tmp_path), "--json", "--fail-on-warning"])
+    payload = json.loads(capsys.readouterr().out)
+
+    assert result == 1
+    assert payload["disk_state"] == "warning"
+
+
+def test_preflight_missing_path_is_operational_error(tmp_path, capsys) -> None:
+    result = main(["preflight", str(tmp_path / "missing"), "--json"])
+
+    assert result == 2
+    assert "Path does not exist" in capsys.readouterr().out
