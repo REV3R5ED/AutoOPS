@@ -28,6 +28,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     disk = subparsers.add_parser("disk", help="Inspect filesystem capacity (read-only)")
     disk.add_argument("path", nargs="?", default=".", help="Path to inspect")
+    disk.add_argument(
+        "--fail-on-warning",
+        action="store_true",
+        help="Return exit code 1 when disk usage meets the warning threshold",
+    )
     _output_group(disk)
 
     environment = subparsers.add_parser(
@@ -65,7 +70,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Used: {status.used_bytes / gib:.2f} GiB / {status.total_bytes / gib:.2f} GiB ({status.used_percent:.2f}%)")
             print(f"Free: {status.free_bytes / gib:.2f} GiB")
             print(f"State: {state} (warning at {config.disk_warning_percent:.1f}%)")
-        return 0
+        return 1 if args.fail_on_warning and state == "warning" else 0
 
     if args.command == "environment":
         status = environment_status()
