@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass
 from datetime import datetime
+from pathlib import Path
 from typing import Iterable
 
 from autoops.checks import file_freshness
@@ -14,14 +15,14 @@ class ArtifactStatus:
     """Serializable health result for an expected local artifact."""
 
     path: str
-    size_bytes: int
-    modified_at: str
-    age_seconds: float
+    size_bytes: int | None
+    modified_at: str | None
+    age_seconds: float | None
     max_age_seconds: float
     min_size_bytes: int
     state: str
 
-    def to_dict(self) -> dict[str, str | int | float]:
+    def to_dict(self) -> dict[str, str | int | float | None]:
         return asdict(self)
 
 
@@ -95,6 +96,19 @@ def artifact_health(
     )
 
 
+def _missing_status(expectation: ArtifactExpectation) -> ArtifactStatus:
+    """Represent an expected artifact that does not exist without inventing metadata."""
+    return ArtifactStatus(
+        path=str(Path(expectation.path).resolve()),
+        size_bytes=None,
+        modified_at=None,
+        age_seconds=None,
+        max_age_seconds=expectation.max_age_seconds,
+        min_size_bytes=expectation.min_size_bytes,
+        state="missing",
+    )
+
+
 def assess_artifacts(
     expectations: Iterable[ArtifactExpectation],
     *,
@@ -102,21 +116,28 @@ def assess_artifacts(
 ) -> ArtifactBatchStatus:
     """Assess several local artifacts and return an aggregate health summary.
 
-    The supplied order is preserved so reports remain predictable. Missing or
-    unreadable paths are intentionally not swallowed: callers receive the same
-    explicit filesystem error as ``artifact_health`` instead of a false healthy
-    summary.
+    The supplied order is preserved so reports remain predictable. A missing
+    expected path is reported as an unhealthy ``missing`` state so one absent
+    backup or export does not hide the health of the remaining batch. Other
+    filesystem errors are still surfaced explicitly rather than being converted
+    into ambiguous health results.
     """
-    statuses = tuple(
-        artifact_health(
-            item.path,
-            item.max_age_seconds,
-            min_size_bytes=item.min_size_bytes,
-            now=now,
-        )
-        for item in expectations
-    )
-    counts = {state: sum(status.state == state for status in statuses) for state in ("ok", "stale", "future", "undersized")}
+    statuses_list: list[ArtifactStatus] = []
+    for item in expectations:
+        try:
+            status = artifact_health(
+                item.path,
+                item.max_age_seconds,
+                min_size_bytes=item.min_size_bytes,
+                now=now,
+            )
+        except FileNotFoundError:
+            status = _missing_status(item)
+        statuses_list.append(status)
+
+    statuses = tuple(statuses_list)
+    states = ("ok", "missing", "stale", "future", "undersized")
+    counts = {state: sum(status.state == state for status in statuses) for state in states}
     healthy = counts["ok"]
     return ArtifactBatchStatus(
         total=len(statuses),
