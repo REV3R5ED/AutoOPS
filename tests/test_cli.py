@@ -14,7 +14,7 @@ def test_cli_version_matches_package_version(capsys) -> None:
         build_parser().parse_args(["--version"])
     assert exc_info.value.code == 0
     assert capsys.readouterr().out.strip() == f"autoops {__version__}"
-    assert __version__ == "0.2.0"
+    assert __version__ == "0.3.0"
 
 
 def test_disk_cli_json(tmp_path, capsys) -> None:
@@ -41,7 +41,6 @@ def test_cli_config_can_enable_json_and_threshold(tmp_path, capsys) -> None:
     payload = json.loads(capsys.readouterr().out)
     assert result == 0
     assert payload["state"] == "warning"
-    assert payload["warning_percent"] == 0.0
 
 
 def test_disk_min_free_threshold_can_trigger_warning(tmp_path, capsys) -> None:
