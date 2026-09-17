@@ -37,7 +37,7 @@ def build_parser() -> argparse.ArgumentParser:
     freshness = subparsers.add_parser("freshness", help="Check whether a local file was updated recently (read-only)")
     freshness.add_argument("path", help="Regular file to inspect")
     freshness.add_argument("--max-age-seconds", type=float, required=True, help="Maximum acceptable file age in seconds")
-    freshness.add_argument("--fail-on-stale", action="store_true", help="Return exit code 1 when the file is stale")
+    freshness.add_argument("--fail-on-stale", action="store_true", help="Return exit code 1 when the file is stale or future-dated")
     _output_group(freshness)
 
     preflight = subparsers.add_parser("preflight", help="Run combined local environment and disk health checks (read-only)")
@@ -135,7 +135,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Modified: {status.modified_at}")
             print(f"Age: {status.age_seconds:.3f}s (maximum {status.max_age_seconds:.3f}s)")
             print(f"State: {status.state}")
-        return 1 if args.fail_on_stale and status.state == "stale" else 0
+        return 1 if args.fail_on_stale and status.state in {"stale", "future"} else 0
 
     if args.command == "preflight":
         try:
