@@ -33,6 +33,16 @@ def test_to_csv_neutralizes_formula_prefixes_after_leading_whitespace(value: str
     assert rows == [{"value": "'" + value}]
 
 
+@pytest.mark.parametrize(
+    "value",
+    ["\u00a0=1+1", "\u2003+cmd", "\u202f-2+3", "\u3000@SUM(A1:A2)"],
+)
+def test_to_csv_neutralizes_formula_prefixes_after_unicode_whitespace(value: str) -> None:
+    text = to_csv({"value": value}, fields=("value",))
+    rows = list(csv.DictReader(io.StringIO(text)))
+    assert rows == [{"value": "'" + value}]
+
+
 def test_to_csv_does_not_modify_ordinary_strings_or_numbers() -> None:
     text = to_csv({"label": " healthy", "value": 42}, fields=("label", "value"))
     rows = list(csv.DictReader(io.StringIO(text)))

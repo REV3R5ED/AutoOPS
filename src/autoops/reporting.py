@@ -9,7 +9,6 @@ from typing import Any
 
 
 _FORMULA_PREFIXES = ("=", "+", "-", "@")
-_SPREADSHEET_IGNORED_PREFIXES = (" ", "\t", "\r", "\n")
 
 
 def _spreadsheet_safe(value: Any) -> Any:
@@ -17,13 +16,13 @@ def _spreadsheet_safe(value: Any) -> Any:
 
     CSV reports can contain operator-controlled paths, hostnames, or future
     diagnostic text. Some spreadsheet applications ignore leading whitespace
-    before deciding whether a cell is a formula, so detection skips whitespace
-    while preserving the original value. Prefixing formula-like strings with an
-    apostrophe keeps them literal while leaving numeric values and ordinary
-    strings unchanged.
+    before deciding whether a cell is a formula, so detection skips all Unicode
+    whitespace while preserving the original value. Prefixing formula-like
+    strings with an apostrophe keeps them literal while leaving numeric values
+    and ordinary strings unchanged.
     """
     if isinstance(value, str):
-        candidate = value.lstrip("".join(_SPREADSHEET_IGNORED_PREFIXES))
+        candidate = value.lstrip()
         if candidate.startswith(_FORMULA_PREFIXES):
             return "'" + value
     return value
@@ -35,8 +34,8 @@ def to_csv(payload: Mapping[str, Any], *, fields: tuple[str, ...]) -> str:
     Callers provide the schema explicitly so report columns remain stable across
     Python versions and implementation details. Nested values are intentionally
     rejected: command reports should expose a simple, spreadsheet-friendly row.
-    Formula-like strings are neutralized even when preceded by whitespace that
-    spreadsheet applications may ignore before formula interpretation.
+    Formula-like strings are neutralized even when preceded by Unicode whitespace
+    that spreadsheet applications may ignore before formula interpretation.
     """
     unknown = set(payload) - set(fields)
     if unknown:
