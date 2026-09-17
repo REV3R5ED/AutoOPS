@@ -74,9 +74,35 @@ def test_assess_artifacts_summarizes_mixed_health_and_preserves_order(tmp_path: 
     assert result.healthy == 1
     assert result.unhealthy == 2
     assert result.ok is False
-    assert result.states == {"ok": 1, "stale": 1, "future": 0, "undersized": 1}
+    assert result.states == {"ok": 1, "missing": 0, "stale": 1, "future": 0, "undersized": 1}
     assert [item.state for item in result.artifacts] == ["ok", "stale", "undersized"]
     assert result.to_dict()["ok"] is False
+
+
+def test_assess_artifacts_reports_missing_and_continues_batch(tmp_path: Path) -> None:
+    now = datetime(2026, 9, 17, 12, 0, tzinfo=timezone.utc)
+    missing = tmp_path / "missing-backup.tar"
+    healthy = _artifact(tmp_path, "report-data", now - timedelta(seconds=20), "report.json")
+
+    result = assess_artifacts(
+        [ArtifactExpectation(str(missing), 300, 10), ArtifactExpectation(str(healthy), 300, 1)],
+        now=now,
+    )
+
+    assert result.total == 2
+    assert result.healthy == 1
+    assert result.unhealthy == 1
+    assert result.states["missing"] == 1
+    assert [item.state for item in result.artifacts] == ["missing", "ok"]
+    assert result.artifacts[0].size_bytes is None
+    assert result.artifacts[0].modified_at is None
+    assert result.artifacts[0].age_seconds is None
+    assert result.artifacts[0].path == str(missing.resolve())
+
+
+def test_artifact_health_still_raises_for_missing_single_path(tmp_path: Path) -> None:
+    with pytest.raises(FileNotFoundError):
+        artifact_health(str(tmp_path / "absent.txt"), 60)
 
 
 def test_assess_artifacts_empty_set_is_vacuously_healthy() -> None:
@@ -86,5 +112,5 @@ def test_assess_artifacts_empty_set_is_vacuously_healthy() -> None:
     assert result.healthy == 0
     assert result.unhealthy == 0
     assert result.ok is True
-    assert result.states == {"ok": 0, "stale": 0, "future": 0, "undersized": 0}
+    assert result.states == {"ok": 0, "missing": 0, "stale": 0, "future": 0, "undersized": 0}
     assert result.to_dict()["artifacts"] == []
