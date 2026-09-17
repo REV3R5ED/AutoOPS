@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
+from datetime import datetime, timezone
 import os
 import platform
 import shutil
@@ -40,6 +41,21 @@ class EnvironmentStatus:
         return asdict(self)
 
 
+@dataclass(frozen=True)
+class FileFreshnessStatus:
+    """A serializable snapshot describing how recently a file was modified."""
+
+    path: str
+    size_bytes: int
+    modified_at: str
+    age_seconds: float
+    max_age_seconds: float
+    state: str
+
+    def to_dict(self) -> dict[str, str | int | float]:
+        return asdict(self)
+
+
 def disk_status(path: str = ".") -> DiskStatus:
     """Return a read-only disk usage snapshot for *path*.
 
@@ -69,4 +85,39 @@ def environment_status() -> EnvironmentStatus:
         architecture=platform.machine() or "unknown",
         python_version=platform.python_version() or sys.version.split()[0],
         cpu_count=os.cpu_count(),
+    )
+
+
+def file_freshness(path: str, max_age_seconds: float, *, now: datetime | None = None) -> FileFreshnessStatus:
+    """Return a read-only freshness assessment for a regular file.
+
+    This is useful for checking whether backups, exports, logs, or other expected
+    artifacts are still being produced. Directories are rejected to keep the
+    contract unambiguous. ``max_age_seconds`` must be finite and non-negative.
+    """
+    if not isinstance(max_age_seconds, (int, float)) or isinstance(max_age_seconds, bool):
+        raise ValueError("max_age_seconds must be a finite non-negative number")
+    if not (0 <= float(max_age_seconds) < float("inf")):
+        raise ValueError("max_age_seconds must be a finite non-negative number")
+
+    target = Path(path).expanduser()
+    if not target.exists():
+        raise FileNotFoundError(f"Path does not exist: {target}")
+    if not target.is_file():
+        raise ValueError(f"Path is not a regular file: {target}")
+
+    stat = target.stat()
+    current = now or datetime.now(timezone.utc)
+    if current.tzinfo is None:
+        raise ValueError("now must be timezone-aware")
+    modified = datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc)
+    age_seconds = max(0.0, (current.astimezone(timezone.utc) - modified).total_seconds())
+    threshold = float(max_age_seconds)
+    return FileFreshnessStatus(
+        path=str(target.resolve()),
+        size_bytes=stat.st_size,
+        modified_at=modified.isoformat().replace("+00:00", "Z"),
+        age_seconds=round(age_seconds, 3),
+        max_age_seconds=threshold,
+        state="stale" if age_seconds > threshold else "ok",
     )
