@@ -27,26 +27,10 @@ def build_parser() -> argparse.ArgumentParser:
         description="Assess local artifact freshness and minimum size (read-only).",
     )
     parser.add_argument("path", nargs="?", help="Regular file to inspect")
-    parser.add_argument(
-        "--manifest",
-        help="JSON manifest containing an artifacts array of path/age/size expectations",
-    )
-    parser.add_argument(
-        "--max-age-seconds",
-        type=float,
-        help="Maximum acceptable file age in seconds (required for a single path)",
-    )
-    parser.add_argument(
-        "--min-size-bytes",
-        type=int,
-        default=0,
-        help="Minimum acceptable file size in bytes (default: 0)",
-    )
-    parser.add_argument(
-        "--fail-on-unhealthy",
-        action="store_true",
-        help="Return exit code 1 when any assessed artifact is unhealthy",
-    )
+    parser.add_argument("--manifest", help="JSON manifest containing an artifacts array of path/age/size expectations")
+    parser.add_argument("--max-age-seconds", type=float, help="Maximum acceptable file age in seconds (required for a single path)")
+    parser.add_argument("--min-size-bytes", type=int, default=0, help="Minimum acceptable file size in bytes (default: 0)")
+    parser.add_argument("--fail-on-unhealthy", action="store_true", help="Return exit code 1 when any assessed artifact is unhealthy")
     output = parser.add_mutually_exclusive_group()
     output.add_argument("--json", action="store_true", dest="as_json", help="Emit JSON")
     output.add_argument("--csv", action="store_true", dest="as_csv", help="Emit CSV")
@@ -79,6 +63,18 @@ def _load_manifest(path: str) -> tuple[ArtifactExpectation, ...]:
     return tuple(expectations)
 
 
+def _batch_csv(rows: tuple[object, ...]) -> str:
+    rendered = [to_csv(row.to_dict(), fields=FIELDS) for row in rows]
+    if not rendered:
+        return to_csv({}, fields=FIELDS)
+    header, first = rendered[0].split("\r\n", 1)
+    bodies = [first.rstrip("\r\n")]
+    for item in rendered[1:]:
+        _, body = item.split("\r\n", 1)
+        bodies.append(body.rstrip("\r\n"))
+    return header + "\r\n" + "\r\n".join(bodies) + "\r\n"
+
+
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     if bool(args.path) == bool(args.manifest):
@@ -95,7 +91,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.manifest:
             batch = assess_artifacts(_load_manifest(args.manifest))
             if args.as_csv:
-                print(to_csv([item.to_dict() for item in batch.artifacts], fields=FIELDS), end="")
+                print(_batch_csv(batch.artifacts), end="")
             elif args.as_json:
                 print(json.dumps(batch.to_dict(), sort_keys=True))
             else:
@@ -104,11 +100,7 @@ def main(argv: list[str] | None = None) -> int:
                     print(f"{item.state}: {item.path}")
             unhealthy = not batch.ok
         else:
-            status = artifact_health(
-                args.path,
-                args.max_age_seconds,
-                min_size_bytes=args.min_size_bytes,
-            )
+            status = artifact_health(args.path, args.max_age_seconds, min_size_bytes=args.min_size_bytes)
             payload = status.to_dict()
             if args.as_csv:
                 print(to_csv(payload, fields=FIELDS), end="")
@@ -121,7 +113,7 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"Age: {status.age_seconds:.3f}s (maximum {status.max_age_seconds:.3f}s)")
                 print(f"State: {status.state}")
             unhealthy = status.state != "ok"
-    except (FileNotFoundError, OSError, ValueError, json.JSONDecodeError) as exc:
+    except (FileNotFoundError, OSError, ValueError) as exc:
         print(f"error: {exc}")
         return 2
 
