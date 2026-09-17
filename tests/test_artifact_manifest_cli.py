@@ -32,6 +32,24 @@ def test_manifest_json_reports_batch_and_health_gate(tmp_path, capsys) -> None:
     assert [item["state"] for item in payload["artifacts"]] == ["ok", "undersized"]
 
 
+def test_manifest_relative_paths_resolve_from_manifest_directory(tmp_path, monkeypatch, capsys) -> None:
+    bundle = tmp_path / "bundle"
+    bundle.mkdir()
+    artifact = bundle / "backup.json"
+    artifact.write_text("ready", encoding="utf-8")
+    manifest = _manifest(bundle, [{"path": "backup.json", "max_age_seconds": 60}])
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    monkeypatch.chdir(elsewhere)
+
+    result = main(["--manifest", str(manifest), "--json"])
+    payload = json.loads(capsys.readouterr().out)
+
+    assert result == 0
+    assert payload["artifacts"][0]["state"] == "ok"
+    assert payload["artifacts"][0]["path"] == str(artifact.resolve())
+
+
 def test_manifest_csv_emits_one_row_per_artifact(tmp_path, capsys) -> None:
     first = tmp_path / "first.txt"
     second = tmp_path / "second.txt"
