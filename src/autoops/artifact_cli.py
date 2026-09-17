@@ -4,9 +4,21 @@ from __future__ import annotations
 
 import argparse
 import json
+from pathlib import Path
 
-from autoops.artifacts import artifact_health
+from autoops.artifacts import ArtifactExpectation, artifact_health, assess_artifacts
 from autoops.reporting import to_csv
+
+
+FIELDS = (
+    "path",
+    "size_bytes",
+    "modified_at",
+    "age_seconds",
+    "max_age_seconds",
+    "min_size_bytes",
+    "state",
+)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -14,12 +26,15 @@ def build_parser() -> argparse.ArgumentParser:
         prog="autoops-artifact",
         description="Assess local artifact freshness and minimum size (read-only).",
     )
-    parser.add_argument("path", help="Regular file to inspect")
+    parser.add_argument("path", nargs="?", help="Regular file to inspect")
+    parser.add_argument(
+        "--manifest",
+        help="JSON manifest containing an artifacts array of path/age/size expectations",
+    )
     parser.add_argument(
         "--max-age-seconds",
         type=float,
-        required=True,
-        help="Maximum acceptable file age in seconds",
+        help="Maximum acceptable file age in seconds (required for a single path)",
     )
     parser.add_argument(
         "--min-size-bytes",
@@ -30,7 +45,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--fail-on-unhealthy",
         action="store_true",
-        help="Return exit code 1 for stale, future-dated, or undersized artifacts",
+        help="Return exit code 1 when any assessed artifact is unhealthy",
     )
     output = parser.add_mutually_exclusive_group()
     output.add_argument("--json", action="store_true", dest="as_json", help="Emit JSON")
@@ -38,40 +53,79 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _load_manifest(path: str) -> tuple[ArtifactExpectation, ...]:
+    data = json.loads(Path(path).read_text(encoding="utf-8"))
+    if not isinstance(data, dict) or set(data) != {"artifacts"} or not isinstance(data["artifacts"], list):
+        raise ValueError("manifest must contain only an 'artifacts' array")
+
+    expectations = []
+    for index, item in enumerate(data["artifacts"]):
+        if not isinstance(item, dict):
+            raise ValueError(f"artifacts[{index}] must be an object")
+        if set(item) - {"path", "max_age_seconds", "min_size_bytes"}:
+            raise ValueError(f"artifacts[{index}] contains unknown keys")
+        if "path" not in item or "max_age_seconds" not in item:
+            raise ValueError(f"artifacts[{index}] requires path and max_age_seconds")
+        path_value = item["path"]
+        max_age = item["max_age_seconds"]
+        min_size = item.get("min_size_bytes", 0)
+        if not isinstance(path_value, str) or not path_value:
+            raise ValueError(f"artifacts[{index}].path must be a non-empty string")
+        if isinstance(max_age, bool) or not isinstance(max_age, (int, float)) or max_age < 0:
+            raise ValueError(f"artifacts[{index}].max_age_seconds must be non-negative")
+        if isinstance(min_size, bool) or not isinstance(min_size, int) or min_size < 0:
+            raise ValueError(f"artifacts[{index}].min_size_bytes must be a non-negative integer")
+        expectations.append(ArtifactExpectation(path_value, float(max_age), min_size))
+    return tuple(expectations)
+
+
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    if bool(args.path) == bool(args.manifest):
+        print("error: provide exactly one of path or --manifest")
+        return 2
+    if args.path and args.max_age_seconds is None:
+        print("error: --max-age-seconds is required when checking a single path")
+        return 2
+    if args.manifest and (args.max_age_seconds is not None or args.min_size_bytes != 0):
+        print("error: age and size thresholds belong inside the manifest")
+        return 2
+
     try:
-        status = artifact_health(
-            args.path,
-            args.max_age_seconds,
-            min_size_bytes=args.min_size_bytes,
-        )
-    except (FileNotFoundError, OSError, ValueError) as exc:
+        if args.manifest:
+            batch = assess_artifacts(_load_manifest(args.manifest))
+            if args.as_csv:
+                print(to_csv([item.to_dict() for item in batch.artifacts], fields=FIELDS), end="")
+            elif args.as_json:
+                print(json.dumps(batch.to_dict(), sort_keys=True))
+            else:
+                print(f"Artifacts: {batch.total} (healthy {batch.healthy}, unhealthy {batch.unhealthy})")
+                for item in batch.artifacts:
+                    print(f"{item.state}: {item.path}")
+            unhealthy = not batch.ok
+        else:
+            status = artifact_health(
+                args.path,
+                args.max_age_seconds,
+                min_size_bytes=args.min_size_bytes,
+            )
+            payload = status.to_dict()
+            if args.as_csv:
+                print(to_csv(payload, fields=FIELDS), end="")
+            elif args.as_json:
+                print(json.dumps(payload, sort_keys=True))
+            else:
+                print(f"Path: {status.path}")
+                print(f"Modified: {status.modified_at}")
+                print(f"Size: {status.size_bytes} bytes (minimum {status.min_size_bytes})")
+                print(f"Age: {status.age_seconds:.3f}s (maximum {status.max_age_seconds:.3f}s)")
+                print(f"State: {status.state}")
+            unhealthy = status.state != "ok"
+    except (FileNotFoundError, OSError, ValueError, json.JSONDecodeError) as exc:
         print(f"error: {exc}")
         return 2
 
-    payload = status.to_dict()
-    fields = (
-        "path",
-        "size_bytes",
-        "modified_at",
-        "age_seconds",
-        "max_age_seconds",
-        "min_size_bytes",
-        "state",
-    )
-    if args.as_csv:
-        print(to_csv(payload, fields=fields), end="")
-    elif args.as_json:
-        print(json.dumps(payload, sort_keys=True))
-    else:
-        print(f"Path: {status.path}")
-        print(f"Modified: {status.modified_at}")
-        print(f"Size: {status.size_bytes} bytes (minimum {status.min_size_bytes})")
-        print(f"Age: {status.age_seconds:.3f}s (maximum {status.max_age_seconds:.3f}s)")
-        print(f"State: {status.state}")
-
-    return 1 if args.fail_on_unhealthy and status.state != "ok" else 0
+    return 1 if args.fail_on_unhealthy and unhealthy else 0
 
 
 if __name__ == "__main__":
