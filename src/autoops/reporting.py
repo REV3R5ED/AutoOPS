@@ -47,7 +47,10 @@ def to_csv(payload: Mapping[str, Any], *, fields: tuple[str, ...]) -> str:
             raise ValueError(f"CSV field {key!r} must contain a scalar value")
 
     stream = io.StringIO(newline="")
-    writer = csv.DictWriter(stream, fieldnames=fields, lineterminator="\n")
+    # CRLF is the CSV convention and, importantly, makes the csv module quote
+    # fields containing either CR or LF consistently across supported Python
+    # versions. A lone LF terminator can leave embedded CR unquoted on 3.10.
+    writer = csv.DictWriter(stream, fieldnames=fields, lineterminator="\r\n")
     writer.writeheader()
     writer.writerow({field: _spreadsheet_safe(payload.get(field, "")) for field in fields})
     return stream.getvalue()
