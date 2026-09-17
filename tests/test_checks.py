@@ -54,6 +54,20 @@ def test_file_freshness_reports_ok_and_stale_states(tmp_path: Path) -> None:
     assert stale.max_age_seconds == 300.0
 
 
+def test_file_freshness_reports_future_timestamp_as_anomaly(tmp_path: Path) -> None:
+    target = tmp_path / "backup.json"
+    target.write_text("{}", encoding="utf-8")
+    now = datetime(2026, 9, 16, 20, 0, tzinfo=timezone.utc)
+    modified = now + timedelta(minutes=5)
+    os.utime(target, (modified.timestamp(), modified.timestamp()))
+
+    status = file_freshness(str(target), 900, now=now)
+
+    assert status.state == "future"
+    assert status.age_seconds == 0.0
+    assert status.modified_at == modified.isoformat().replace("+00:00", "Z")
+
+
 def test_file_freshness_rejects_missing_and_non_file_paths(tmp_path: Path) -> None:
     with pytest.raises(FileNotFoundError, match="Path does not exist"):
         file_freshness(str(tmp_path / "missing"), 60)

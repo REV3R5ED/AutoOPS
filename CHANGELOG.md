@@ -5,6 +5,7 @@ All notable changes to AutoOPS are documented here. The project follows semantic
 ## [Unreleased]
 
 ### Added
+- File freshness checks now report modification timestamps later than the reference clock as a distinct `future` anomaly instead of silently clamping them to a healthy zero-second age, making clock skew and restored-metadata anomalies visible in human, JSON, and CSV reports.
 - CSV reporting now detects formula prefixes after Unicode whitespace (including non-breaking, em, narrow no-break, and ideographic spaces), closing a spreadsheet-formula bypass while preserving the original cell text.
 - Workflow control flags now require real booleans: malformed `fail_fast` definitions and non-boolean workflow `dry_run` values are rejected before any operation executes, preventing loosely typed callers from silently changing workflow safety semantics.
 - Operation safety flags now require real booleans: malformed `mutates_state` definitions and non-boolean `dry_run` values are rejected before any action executes, preventing loosely typed callers from accidentally authorizing state changes with values such as `0`.

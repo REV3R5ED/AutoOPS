@@ -34,6 +34,20 @@ def test_freshness_cli_can_fail_on_stale_without_losing_report(tmp_path, capsys)
     assert payload["age_seconds"] >= 60
 
 
+def test_freshness_cli_reports_future_dated_file(tmp_path, capsys) -> None:
+    target = tmp_path / "backup.json"
+    target.write_text("{}", encoding="utf-8")
+    future = time.time() + 300
+    os.utime(target, (future, future))
+
+    result = main(["freshness", str(target), "--max-age-seconds", "60", "--json"])
+    payload = json.loads(capsys.readouterr().out)
+
+    assert result == 0
+    assert payload["state"] == "future"
+    assert payload["age_seconds"] == 0.0
+
+
 def test_freshness_cli_rejects_invalid_threshold(tmp_path, capsys) -> None:
     target = tmp_path / "artifact.txt"
     target.write_text("ok", encoding="utf-8")
