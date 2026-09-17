@@ -38,7 +38,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def _load_manifest(path: str) -> tuple[ArtifactExpectation, ...]:
-    data = json.loads(Path(path).read_text(encoding="utf-8"))
+    manifest_path = Path(path).resolve()
+    data = json.loads(manifest_path.read_text(encoding="utf-8"))
     if not isinstance(data, dict) or set(data) != {"artifacts"} or not isinstance(data["artifacts"], list):
         raise ValueError("manifest must contain only an 'artifacts' array")
 
@@ -59,7 +60,10 @@ def _load_manifest(path: str) -> tuple[ArtifactExpectation, ...]:
             raise ValueError(f"artifacts[{index}].max_age_seconds must be non-negative")
         if isinstance(min_size, bool) or not isinstance(min_size, int) or min_size < 0:
             raise ValueError(f"artifacts[{index}].min_size_bytes must be a non-negative integer")
-        expectations.append(ArtifactExpectation(path_value, float(max_age), min_size))
+        artifact_path = Path(path_value)
+        if not artifact_path.is_absolute():
+            artifact_path = manifest_path.parent / artifact_path
+        expectations.append(ArtifactExpectation(str(artifact_path), float(max_age), min_size))
     return tuple(expectations)
 
 
