@@ -19,6 +19,8 @@ Then run:
 autoops-artifact --manifest artifacts.json --json --fail-on-unhealthy
 ```
 
-Exit code `0` means every artifact met its freshness and size expectations, `1` means at least one artifact was stale, future-dated, or undersized, and `2` means the manifest or filesystem check could not be evaluated. JSON includes aggregate counts plus ordered per-artifact results. CSV emits one stable row per artifact.
+Exit code `0` means every artifact met its freshness and size expectations, `1` means at least one artifact was missing, stale, future-dated, or undersized, and `2` means the manifest or another filesystem check could not be evaluated. JSON includes aggregate counts plus ordered per-artifact results. CSV emits one stable row per artifact.
+
+A missing expected path is a health result rather than a batch-processing error. It is reported with state `missing` and null size/timestamp/age metadata, and AutoOPS continues evaluating later entries. This makes a manifest useful as a complete scheduled-job health report even when one expected backup or export was never produced. Other filesystem errors remain explicit errors rather than being silently converted to health states.
 
 The manifest schema is deliberately narrow. Each entry accepts only `path`, `max_age_seconds`, and optional `min_size_bytes`; unknown keys are rejected. AutoOPS does not execute commands from manifests, open artifact contents, upload files, or mutate the filesystem. Paths are assessed using local metadata only.
