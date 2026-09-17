@@ -5,6 +5,7 @@ All notable changes to AutoOPS are documented here. The project follows semantic
 ## [Unreleased]
 
 ### Added
+- File freshness checks now report modification timestamps later than the reference clock as a distinct `future` anomaly instead of silently clamping them to a healthy zero-second age, making clock skew and restored-metadata anomalies visible in human, JSON, and CSV reports.
 - CSV reporting now detects formula prefixes after Unicode whitespace (including non-breaking, em, narrow no-break, and ideographic spaces), closing a spreadsheet-formula bypass while preserving the original cell text.
 - Workflow control flags now require real booleans: malformed `fail_fast` definitions and non-boolean workflow `dry_run` values are rejected before any operation executes, preventing loosely typed callers from silently changing workflow safety semantics.
 - Operation safety flags now require real booleans: malformed `mutates_state` definitions and non-boolean `dry_run` values are rejected before any action executes, preventing loosely typed callers from accidentally authorizing state changes with values such as `0`.
@@ -33,22 +34,3 @@ All notable changes to AutoOPS are documented here. The project follows semantic
 - Read-only environment health checks for host/runtime preflight diagnostics.
 - Stable JSON and CSV reporting for disk and environment checks.
 - Structured NDJSON audit logging with defense-in-depth redaction of common secret-bearing fields.
-- Explicit JSON configuration with strict validation and safe defaults.
-- Cross-platform CI coverage on Linux, Windows, and macOS.
-
-### Changed
-- Package and CLI version metadata aligned at `0.2.0`.
-- Package metadata expanded for Python 3.10–3.13 and systems-administration use cases.
-
-### Safety
-- State-changing operations remain dry-run by default and require explicit operator intent to execute.
-- Health checks are local and read-only; they do not probe remote systems.
-- Logging never writes files implicitly and redacts common secret-bearing fields before serialization.
-
-## [0.1.0]
-
-### Added
-- Initial Python package and CLI foundation.
-- Common operation/result model and dry-run framework.
-- Disk capacity health check.
-- Unit tests and GitHub Actions CI.
