@@ -94,8 +94,9 @@ def file_freshness(path: str, max_age_seconds: float, *, now: datetime | None = 
     This is useful for checking whether backups, exports, logs, or other expected
     artifacts are still being produced. Directories are rejected to keep the
     contract unambiguous. ``max_age_seconds`` must be finite and non-negative.
-    A modification time later than the reference clock is reported as ``future``
-    instead of being silently clamped to a healthy zero-second age.
+    Modification times more than one second later than the reference clock are
+    reported as ``future``. The small tolerance avoids false anomalies caused by
+    filesystem timestamp/clock resolution differences across operating systems.
     """
     if not isinstance(max_age_seconds, (int, float)) or isinstance(max_age_seconds, bool):
         raise ValueError("max_age_seconds must be a finite non-negative number")
@@ -116,7 +117,7 @@ def file_freshness(path: str, max_age_seconds: float, *, now: datetime | None = 
     raw_age_seconds = (current.astimezone(timezone.utc) - modified).total_seconds()
     age_seconds = max(0.0, raw_age_seconds)
     threshold = float(max_age_seconds)
-    if raw_age_seconds < 0:
+    if raw_age_seconds < -1.0:
         state = "future"
     elif raw_age_seconds > threshold:
         state = "stale"

@@ -17,6 +17,18 @@ if status.state != "ok":
     print(status.to_dict())
 ```
 
+Installed packages also expose the same check as `autoops-artifact`, making it useful in shell scripts and CI without custom Python glue:
+
+```bash
+autoops-artifact /var/backups/app.json \
+  --max-age-seconds 3600 \
+  --min-size-bytes 1024 \
+  --json \
+  --fail-on-unhealthy
+```
+
+The command exits `0` for a healthy artifact, `1` when `--fail-on-unhealthy` is set and the artifact is stale, future-dated, or undersized, and `2` for invalid input or filesystem errors. JSON and CSV reports are still emitted before a health-gate exit code of `1`, so CI retains diagnostic evidence.
+
 States are deterministic:
 
 - `ok` — timestamp is healthy and the file meets the minimum size.

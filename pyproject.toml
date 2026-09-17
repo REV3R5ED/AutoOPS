@@ -33,6 +33,7 @@ Issues = "https://github.com/REV3R5ED/AutoOPS/issues"
 
 [project.scripts]
 autoops = "autoops.cli:main"
+autoops-artifact = "autoops.artifact_cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
