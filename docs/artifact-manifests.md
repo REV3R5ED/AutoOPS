@@ -19,6 +19,8 @@ Then run:
 autoops-artifact --manifest artifacts.json --json --fail-on-unhealthy
 ```
 
+Relative artifact paths are resolved from the manifest file's directory, not from the process working directory. This makes a manifest portable as a self-contained operations bundle and prevents a scheduler, CI runner, or service launched from another directory from accidentally checking the wrong relative path. Absolute artifact paths remain unchanged.
+
 Exit code `0` means every artifact met its freshness and size expectations, `1` means at least one artifact was missing, stale, future-dated, or undersized, and `2` means the manifest or another filesystem check could not be evaluated. JSON includes aggregate counts plus ordered per-artifact results. CSV emits one stable row per artifact.
 
 A missing expected path is a health result rather than a batch-processing error. It is reported with state `missing` and null size/timestamp/age metadata, and AutoOPS continues evaluating later entries. This makes a manifest useful as a complete scheduled-job health report even when one expected backup or export was never produced. Other filesystem errors remain explicit errors rather than being silently converted to health states.
