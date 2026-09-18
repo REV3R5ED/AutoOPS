@@ -119,3 +119,23 @@ def test_assess_artifacts_rejects_duplicate_resolved_paths(tmp_path: Path) -> No
             ArtifactExpectation(str(target), 300),
             ArtifactExpectation(str(duplicate_spelling), 600),
         ])
+
+
+@pytest.mark.parametrize(
+    ("max_age_seconds", "min_size_bytes", "message"),
+    [
+        (-1, 0, "finite non-negative number"),
+        (float("nan"), 0, "finite non-negative number"),
+        (60, -1, "non-negative integer"),
+        (60, True, "non-negative integer"),
+    ],
+)
+def test_assess_artifacts_rejects_invalid_constraints_for_missing_paths(
+    tmp_path: Path, max_age_seconds, min_size_bytes, message: str
+) -> None:
+    missing = tmp_path / "missing-backup.tar"
+
+    with pytest.raises(ValueError, match=message):
+        assess_artifacts([
+            ArtifactExpectation(str(missing), max_age_seconds, min_size_bytes),
+        ])

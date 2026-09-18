@@ -20,4 +20,6 @@ At least one expectation is required. An empty iterable raises `ValueError` inst
 
 Each expectation must also resolve to a unique local path. Duplicate spellings such as `backup.tar` and `./backup.tar` are rejected with `ValueError` rather than double-counting one artifact or applying conflicting thresholds to the same file. This mirrors the manifest CLI's uniqueness guarantee for direct library callers.
 
+Constraint validation is independent of filesystem state: `max_age_seconds` must be a finite non-negative number and `min_size_bytes` must be a non-negative integer even when the expected artifact is currently missing. Invalid configuration therefore fails closed with `ValueError` instead of being masked as an ordinary `missing` health result.
+
 The check does not open, modify, delete, upload, or execute artifact contents. It reads filesystem metadata only. A missing expected artifact is represented as an unhealthy `missing` state and the rest of the batch continues to be assessed; other filesystem errors are surfaced explicitly rather than being converted into ambiguous health results.
