@@ -2,7 +2,7 @@
 
 Practical automation scripts and utilities for repetitive IT operations.
 
-> Status: active development / v0.2 release hardening
+> Status: v0.3.0 release candidate — final tag pending
 
 ## Goals
 
