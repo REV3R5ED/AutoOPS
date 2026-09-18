@@ -50,6 +50,20 @@ def test_manifest_relative_paths_resolve_from_manifest_directory(tmp_path, monke
     assert payload["artifacts"][0]["path"] == str(artifact.resolve())
 
 
+def test_manifest_rejects_duplicate_resolved_paths(tmp_path, capsys) -> None:
+    artifact = tmp_path / "backup.json"
+    artifact.write_text("ready", encoding="utf-8")
+    manifest = _manifest(tmp_path, [
+        {"path": "backup.json", "max_age_seconds": 60},
+        {"path": "./backup.json", "max_age_seconds": 120},
+    ])
+
+    result = main(["--manifest", str(manifest), "--json"])
+
+    assert result == 2
+    assert "duplicates an earlier resolved path" in capsys.readouterr().out
+
+
 def test_manifest_csv_emits_one_row_per_artifact(tmp_path, capsys) -> None:
     first = tmp_path / "first.txt"
     second = tmp_path / "second.txt"

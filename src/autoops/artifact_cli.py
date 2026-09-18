@@ -44,6 +44,7 @@ def _load_manifest(path: str) -> tuple[ArtifactExpectation, ...]:
         raise ValueError("manifest must contain only an 'artifacts' array")
 
     expectations = []
+    seen_paths: set[Path] = set()
     for index, item in enumerate(data["artifacts"]):
         if not isinstance(item, dict):
             raise ValueError(f"artifacts[{index}] must be an object")
@@ -63,6 +64,10 @@ def _load_manifest(path: str) -> tuple[ArtifactExpectation, ...]:
         artifact_path = Path(path_value)
         if not artifact_path.is_absolute():
             artifact_path = manifest_path.parent / artifact_path
+        artifact_path = artifact_path.resolve()
+        if artifact_path in seen_paths:
+            raise ValueError(f"artifacts[{index}].path duplicates an earlier resolved path")
+        seen_paths.add(artifact_path)
         expectations.append(ArtifactExpectation(str(artifact_path), float(max_age), min_size))
     return tuple(expectations)
 
