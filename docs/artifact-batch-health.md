@@ -14,6 +14,8 @@ if not result.ok:
     print(result.to_dict())
 ```
 
-The aggregate result reports total, healthy, and unhealthy counts plus deterministic counts for `ok`, `stale`, `future`, and `undersized` states. Individual artifact results remain available in input order for support evidence and machine-readable reporting.
+The aggregate result reports total, healthy, and unhealthy counts plus deterministic counts for `ok`, `missing`, `stale`, `future`, and `undersized` states. Individual artifact results remain available in input order for support evidence and machine-readable reporting.
 
-The check does not open, modify, delete, upload, or execute artifact contents. It reads filesystem metadata only. Missing or inaccessible paths raise their normal filesystem error instead of being silently converted into a healthy or incomplete summary.
+At least one expectation is required. An empty iterable raises `ValueError` instead of producing a vacuously healthy result, so library callers get the same fail-closed safety invariant as manifest-driven CLI checks.
+
+The check does not open, modify, delete, upload, or execute artifact contents. It reads filesystem metadata only. A missing expected artifact is represented as an unhealthy `missing` state and the rest of the batch continues to be assessed; other filesystem errors are surfaced explicitly rather than being converted into ambiguous health results.
