@@ -73,6 +73,16 @@ def test_manifest_rejects_empty_artifact_list(tmp_path, capsys) -> None:
     assert "artifacts array must not be empty" in capsys.readouterr().out
 
 
+def test_manifest_rejects_non_finite_max_age(tmp_path, capsys) -> None:
+    for value in (float("nan"), float("inf"), float("-inf")):
+        manifest = _manifest(tmp_path, [{"path": "report.txt", "max_age_seconds": value}])
+
+        result = main(["--manifest", str(manifest), "--json"])
+
+        assert result == 2
+        assert "finite non-negative number" in capsys.readouterr().out
+
+
 def test_manifest_csv_emits_one_row_per_artifact(tmp_path, capsys) -> None:
     first = tmp_path / "first.txt"
     second = tmp_path / "second.txt"
