@@ -4,6 +4,8 @@ All notable changes to AutoOPS are documented here. The project follows semantic
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-09-18
+
 ### Added
 - File freshness checks now report modification timestamps later than the reference clock as a distinct `future` anomaly instead of silently clamping them to a healthy zero-second age, making clock skew and restored-metadata anomalies visible in human, JSON, and CSV reports.
 - CSV reporting now detects formula prefixes after Unicode whitespace (including non-breaking, em, narrow no-break, and ideographic spaces), closing a spreadsheet-formula bypass while preserving the original cell text.
