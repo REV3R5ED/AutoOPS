@@ -116,16 +116,20 @@ def assess_artifacts(
 ) -> ArtifactBatchStatus:
     """Assess several local artifacts and return an aggregate health summary.
 
-    At least one expectation is required so an accidentally empty caller cannot
-    produce a vacuously healthy operational result. The supplied order is
-    preserved so reports remain predictable. A missing expected path is reported
-    as an unhealthy ``missing`` state so one absent backup or export does not hide
-    the health of the remaining batch. Other filesystem errors are still surfaced
-    explicitly rather than being converted into ambiguous health results.
+    At least one unique expectation is required so an accidentally empty or
+    duplicated caller cannot produce misleading operational totals. The supplied
+    order is preserved so reports remain predictable. A missing expected path is
+    reported as an unhealthy ``missing`` state so one absent backup or export does
+    not hide the health of the remaining batch. Other filesystem errors are still
+    surfaced explicitly rather than being converted into ambiguous health results.
     """
     items = tuple(expectations)
     if not items:
         raise ValueError("at least one artifact expectation is required")
+
+    resolved_paths = [Path(item.path).resolve() for item in items]
+    if len(set(resolved_paths)) != len(resolved_paths):
+        raise ValueError("artifact expectation paths must be unique")
 
     statuses_list: list[ArtifactStatus] = []
     for item in items:
