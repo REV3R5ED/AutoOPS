@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 from pathlib import Path
 
 from autoops.artifacts import ArtifactExpectation, artifact_health, assess_artifacts
@@ -57,10 +58,15 @@ def _load_manifest(path: str) -> tuple[ArtifactExpectation, ...]:
         path_value = item["path"]
         max_age = item["max_age_seconds"]
         min_size = item.get("min_size_bytes", 0)
+        if (
+            isinstance(max_age, bool)
+            or not isinstance(max_age, (int, float))
+            or not math.isfinite(max_age)
+            or max_age < 0
+        ):
+            raise ValueError(f"artifacts[{index}].max_age_seconds must be a finite non-negative number")
         if not isinstance(path_value, str) or not path_value:
             raise ValueError(f"artifacts[{index}].path must be a non-empty string")
-        if isinstance(max_age, bool) or not isinstance(max_age, (int, float)) or max_age < 0:
-            raise ValueError(f"artifacts[{index}].max_age_seconds must be non-negative")
         if isinstance(min_size, bool) or not isinstance(min_size, int) or min_size < 0:
             raise ValueError(f"artifacts[{index}].min_size_bytes must be a non-negative integer")
         artifact_path = Path(path_value)
