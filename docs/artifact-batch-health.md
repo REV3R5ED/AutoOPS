@@ -22,4 +22,6 @@ Each expectation must also resolve to a unique local path. Duplicate spellings s
 
 Constraint validation is independent of filesystem state: `max_age_seconds` must be a finite non-negative number and `min_size_bytes` must be a non-negative integer even when the expected artifact is currently missing. Invalid configuration therefore fails closed with `ValueError` instead of being masked as an ordinary `missing` health result.
 
+When callers provide the optional `now` reference clock for deterministic checks or tests, it must be a timezone-aware `datetime`. The clock is validated before any artifact lookup, so an invalid reference cannot be hidden by an all-missing batch and accidentally appear to be an ordinary health result.
+
 The check does not open, modify, delete, upload, or execute artifact contents. It reads filesystem metadata only. A missing expected artifact is represented as an unhealthy `missing` state and the rest of the batch continues to be assessed; other filesystem errors are surfaced explicitly rather than being converted into ambiguous health results.

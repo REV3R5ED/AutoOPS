@@ -139,3 +139,11 @@ def test_assess_artifacts_rejects_invalid_constraints_for_missing_paths(
         assess_artifacts([
             ArtifactExpectation(str(missing), max_age_seconds, min_size_bytes),
         ])
+
+
+@pytest.mark.parametrize("now", [datetime(2026, 9, 17, 12, 0), "2026-09-17T12:00:00Z"])
+def test_assess_artifacts_rejects_invalid_reference_clock_for_missing_paths(tmp_path: Path, now) -> None:
+    missing = tmp_path / "missing-backup.tar"
+
+    with pytest.raises(ValueError, match="timezone-aware datetime"):
+        assess_artifacts([ArtifactExpectation(str(missing), 300)], now=now)
