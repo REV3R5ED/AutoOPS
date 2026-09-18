@@ -108,3 +108,14 @@ def test_artifact_health_still_raises_for_missing_single_path(tmp_path: Path) ->
 def test_assess_artifacts_rejects_empty_expectations() -> None:
     with pytest.raises(ValueError, match="at least one artifact expectation"):
         assess_artifacts([])
+
+
+def test_assess_artifacts_rejects_duplicate_resolved_paths(tmp_path: Path) -> None:
+    target = tmp_path / "backup.tar"
+    duplicate_spelling = tmp_path / "." / "backup.tar"
+
+    with pytest.raises(ValueError, match="paths must be unique"):
+        assess_artifacts([
+            ArtifactExpectation(str(target), 300),
+            ArtifactExpectation(str(duplicate_spelling), 600),
+        ])
