@@ -18,4 +18,6 @@ The aggregate result reports total, healthy, and unhealthy counts plus determini
 
 At least one expectation is required. An empty iterable raises `ValueError` instead of producing a vacuously healthy result, so library callers get the same fail-closed safety invariant as manifest-driven CLI checks.
 
+Each expectation must also resolve to a unique local path. Duplicate spellings such as `backup.tar` and `./backup.tar` are rejected with `ValueError` rather than double-counting one artifact or applying conflicting thresholds to the same file. This mirrors the manifest CLI's uniqueness guarantee for direct library callers.
+
 The check does not open, modify, delete, upload, or execute artifact contents. It reads filesystem metadata only. A missing expected artifact is represented as an unhealthy `missing` state and the rest of the batch continues to be assessed; other filesystem errors are surfaced explicitly rather than being converted into ambiguous health results.
