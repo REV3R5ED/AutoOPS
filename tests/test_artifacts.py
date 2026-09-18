@@ -105,12 +105,6 @@ def test_artifact_health_still_raises_for_missing_single_path(tmp_path: Path) ->
         artifact_health(str(tmp_path / "absent.txt"), 60)
 
 
-def test_assess_artifacts_empty_set_is_vacuously_healthy() -> None:
-    result = assess_artifacts([])
-
-    assert result.total == 0
-    assert result.healthy == 0
-    assert result.unhealthy == 0
-    assert result.ok is True
-    assert result.states == {"ok": 0, "missing": 0, "stale": 0, "future": 0, "undersized": 0}
-    assert result.to_dict()["artifacts"] == []
+def test_assess_artifacts_rejects_empty_expectations() -> None:
+    with pytest.raises(ValueError, match="at least one artifact expectation"):
+        assess_artifacts([])
