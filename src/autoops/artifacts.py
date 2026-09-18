@@ -60,6 +60,16 @@ class ArtifactBatchStatus:
         }
 
 
+def _validate_constraints(max_age_seconds: float, min_size_bytes: int) -> None:
+    """Validate artifact constraints independently of filesystem state."""
+    if not isinstance(min_size_bytes, int) or isinstance(min_size_bytes, bool) or min_size_bytes < 0:
+        raise ValueError("min_size_bytes must be a non-negative integer")
+    if not isinstance(max_age_seconds, (int, float)) or isinstance(max_age_seconds, bool):
+        raise ValueError("max_age_seconds must be a finite non-negative number")
+    if not (0 <= float(max_age_seconds) < float("inf")):
+        raise ValueError("max_age_seconds must be a finite non-negative number")
+
+
 def artifact_health(
     path: str,
     max_age_seconds: float,
@@ -74,8 +84,7 @@ def artifact_health(
     anomalies and staleness take precedence over size so operators see the most
     fundamental production problem first.
     """
-    if not isinstance(min_size_bytes, int) or isinstance(min_size_bytes, bool) or min_size_bytes < 0:
-        raise ValueError("min_size_bytes must be a non-negative integer")
+    _validate_constraints(max_age_seconds, min_size_bytes)
 
     freshness = file_freshness(path, max_age_seconds, now=now)
     if freshness.state in {"future", "stale"}:
@@ -117,15 +126,20 @@ def assess_artifacts(
     """Assess several local artifacts and return an aggregate health summary.
 
     At least one unique expectation is required so an accidentally empty or
-    duplicated caller cannot produce misleading operational totals. The supplied
-    order is preserved so reports remain predictable. A missing expected path is
-    reported as an unhealthy ``missing`` state so one absent backup or export does
-    not hide the health of the remaining batch. Other filesystem errors are still
-    surfaced explicitly rather than being converted into ambiguous health results.
+    duplicated caller cannot produce misleading operational totals. Constraints
+    are validated before filesystem state so a missing path cannot mask invalid
+    configuration. The supplied order is preserved so reports remain predictable.
+    A missing expected path is reported as an unhealthy ``missing`` state so one
+    absent backup or export does not hide the health of the remaining batch. Other
+    filesystem errors are still surfaced explicitly rather than being converted
+    into ambiguous health results.
     """
     items = tuple(expectations)
     if not items:
         raise ValueError("at least one artifact expectation is required")
+
+    for item in items:
+        _validate_constraints(item.max_age_seconds, item.min_size_bytes)
 
     resolved_paths = [Path(item.path).resolve() for item in items]
     if len(set(resolved_paths)) != len(resolved_paths):
