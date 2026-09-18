@@ -64,6 +64,15 @@ def test_manifest_rejects_duplicate_resolved_paths(tmp_path, capsys) -> None:
     assert "duplicates an earlier resolved path" in capsys.readouterr().out
 
 
+def test_manifest_rejects_empty_artifact_list(tmp_path, capsys) -> None:
+    manifest = _manifest(tmp_path, [])
+
+    result = main(["--manifest", str(manifest), "--json", "--fail-on-unhealthy"])
+
+    assert result == 2
+    assert "artifacts array must not be empty" in capsys.readouterr().out
+
+
 def test_manifest_csv_emits_one_row_per_artifact(tmp_path, capsys) -> None:
     first = tmp_path / "first.txt"
     second = tmp_path / "second.txt"
