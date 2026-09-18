@@ -42,6 +42,8 @@ def _load_manifest(path: str) -> tuple[ArtifactExpectation, ...]:
     data = json.loads(manifest_path.read_text(encoding="utf-8"))
     if not isinstance(data, dict) or set(data) != {"artifacts"} or not isinstance(data["artifacts"], list):
         raise ValueError("manifest must contain only an 'artifacts' array")
+    if not data["artifacts"]:
+        raise ValueError("manifest artifacts array must not be empty")
 
     expectations = []
     seen_paths: set[Path] = set()
