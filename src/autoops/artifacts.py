@@ -70,6 +70,12 @@ def _validate_constraints(max_age_seconds: float, min_size_bytes: int) -> None:
         raise ValueError("max_age_seconds must be a finite non-negative number")
 
 
+def _validate_reference_clock(now: datetime | None) -> None:
+    """Reject ambiguous caller-supplied clocks before filesystem state is inspected."""
+    if now is not None and (not isinstance(now, datetime) or now.tzinfo is None):
+        raise ValueError("now must be a timezone-aware datetime")
+
+
 def artifact_health(
     path: str,
     max_age_seconds: float,
@@ -85,6 +91,7 @@ def artifact_health(
     fundamental production problem first.
     """
     _validate_constraints(max_age_seconds, min_size_bytes)
+    _validate_reference_clock(now)
 
     freshness = file_freshness(path, max_age_seconds, now=now)
     if freshness.state in {"future", "stale"}:
@@ -127,17 +134,18 @@ def assess_artifacts(
 
     At least one unique expectation is required so an accidentally empty or
     duplicated caller cannot produce misleading operational totals. Constraints
-    are validated before filesystem state so a missing path cannot mask invalid
-    configuration. The supplied order is preserved so reports remain predictable.
-    A missing expected path is reported as an unhealthy ``missing`` state so one
-    absent backup or export does not hide the health of the remaining batch. Other
-    filesystem errors are still surfaced explicitly rather than being converted
-    into ambiguous health results.
+    and a caller-supplied reference clock are validated before filesystem state so
+    missing paths cannot mask invalid configuration. The supplied order is
+    preserved so reports remain predictable. A missing expected path is reported
+    as an unhealthy ``missing`` state so one absent backup or export does not hide
+    the health of the remaining batch. Other filesystem errors are still surfaced
+    explicitly rather than being converted into ambiguous health results.
     """
     items = tuple(expectations)
     if not items:
         raise ValueError("at least one artifact expectation is required")
 
+    _validate_reference_clock(now)
     for item in items:
         _validate_constraints(item.max_age_seconds, item.min_size_bytes)
 
