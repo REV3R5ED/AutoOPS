@@ -59,6 +59,37 @@ Example:
 
 `json_output` changes the default output mode. `disk_warning_percent` warns when used capacity reaches the configured percentage. Optional `disk_min_free_gib` also warns when absolute free capacity falls below the configured GiB value; this is useful for workloads that need predictable headroom even on large filesystems. When both thresholds are configured, either condition can trigger a warning and reports identify the warning reason. Unknown keys, wrong types, malformed JSON, negative minimum-free values, and percentage thresholds outside 0–100 are rejected instead of being silently ignored. No config file is required; safe built-in defaults are used otherwise.
 
+## Artifact health checks
+
+`autoops-artifact` verifies that expected local files are present, fresh enough, and large enough without modifying them. It is useful for backup verification, scheduled export checks, evidence-collection pipelines, and CI jobs that need to fail when an expected artifact is stale or missing.
+
+Check one file and emit machine-readable evidence:
+
+```bash
+autoops-artifact ./backup.tar.gz --max-age-seconds 86400 --min-size-bytes 1024 --json --fail-on-unhealthy
+```
+
+For repeatable checks, use a manifest. Relative artifact paths are resolved from the manifest location, which makes the same manifest portable across workstations and CI runners:
+
+```json
+{
+  "artifacts": [
+    {"path": "exports/inventory.json", "max_age_seconds": 3600, "min_size_bytes": 100},
+    {"path": "backups/config.tar.gz", "max_age_seconds": 86400, "min_size_bytes": 1024}
+  ]
+}
+```
+
+```bash
+autoops-artifact --manifest artifact-health.json --json --fail-on-unhealthy
+```
+
+Exit code `0` means the command completed and, when `--fail-on-unhealthy` is used, every artifact is healthy. Exit code `1` means at least one assessed artifact is unhealthy. Exit code `2` indicates invalid input, a malformed manifest, or an operational error. JSON and CSV output are available for automation; manifests reject unknown keys, invalid thresholds, empty artifact sets, and duplicate resolved paths instead of silently accepting ambiguous checks.
+
+### Portfolio example: backup freshness gate
+
+A scheduled backup job can run the manifest check after producing its files and retain the JSON result as an audit artifact. The gate is entirely local and read-only: AutoOPS checks metadata and size, but does not upload, delete, alter, or remotely probe anything. This demonstrates a practical operations pattern where automation produces both a deterministic decision and evidence that can be reviewed later.
+
 ## Operation safety contract
 
 AutoOPS has a reusable `Operation` / `OperationResult` contract for automation modules. Every operation declares whether it mutates system state. Mutating operations default to **dry-run**, and their action is not called until a caller explicitly supplies `dry_run=False`.
