@@ -10,6 +10,10 @@ AutoOPS focuses on safe, understandable automation that reduces repetitive opera
 
 Planned areas include system/environment checks, file maintenance workflows, service/process health checks, repeatable task runners, structured logging, dry-run support, and machine-readable output.
 
+## Reproducible portfolio demo
+
+For a recruiter-friendly end-to-end example, see **[Reproducible portfolio demo](docs/portfolio-demo.md)**. It walks through a local, read-only maintenance-readiness scenario that combines preflight health gating, artifact validation, explicit exit semantics, and JSON evidence suitable for CI or a support handoff.
+
 ## Health checks
 
 AutoOPS provides cross-platform, read-only operational checks:
