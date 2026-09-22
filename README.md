@@ -4,6 +4,10 @@ Practical automation scripts and utilities for repetitive IT operations.
 
 > Status: v0.3.0 release candidate — final tag pending
 
+## Why AutoOPS
+
+AutoOPS demonstrates production-minded IT automation rather than one-off scripts: read-only health checks, explicit exit semantics, deterministic JSON/CSV evidence, configurable safety thresholds, dry-run-by-default mutation contracts, workflow composition, and secret-aware audit logging. The fastest reviewer path is the **[reproducible portfolio demo](docs/portfolio-demo.md)**, which exercises a realistic local maintenance-readiness workflow without modifying the host or contacting remote systems.
+
 ## Goals
 
 AutoOPS focuses on safe, understandable automation that reduces repetitive operational work while keeping actions observable and controllable.
@@ -158,6 +162,16 @@ The logger recursively redacts values stored under common secret-bearing field n
 - [x] portfolio-oriented usage examples
 - [x] CI build and installed-wheel sanity coverage
 - [ ] tagged portfolio release
+
+## Related portfolio projects
+
+AutoOPS is one part of a coordinated defensive IT/security portfolio:
+
+- [LogLens](https://github.com/REV3R5ED/LogLens) — deterministic log analysis and explainable anomaly detection.
+- [NetScope](https://github.com/REV3R5ED/NetScope) — bounded network visibility and diagnostics.
+- [SentinelKit](https://github.com/REV3R5ED/SentinelKit) — Blue Team utilities for IOC, IP, hashing, and authentication-log triage.
+
+Together the projects cover host/operations readiness, network diagnostics, log analysis, and SOC-oriented triage while keeping automation explicit, bounded, and defensive.
 
 ## Testing
 
