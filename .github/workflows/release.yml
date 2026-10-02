@@ -51,7 +51,7 @@ jobs:
           python -m pip install --force-reinstall dist/*.whl
           autoops --version
           autoops preflight . --json
-          autoops-artifact pyproject.toml --min-size-bytes 1 --json --fail-on-unhealthy
+          autoops-artifact pyproject.toml --max-age-seconds 86400 --min-size-bytes 1 --json --fail-on-unhealthy
       - name: Extract changelog notes
         env:
           RELEASE_TAG: ${{ github.ref_name }}

@@ -1,6 +1,7 @@
 """Tests for autoops watch: sinks, event collection, and the watch loop."""
 
 import json
+import socket
 from datetime import datetime, timezone
 
 import pytest
@@ -42,9 +43,13 @@ def test_parse_syslog_sink() -> None:
 
 
 def test_parse_syslog_with_address() -> None:
-    sink = parse_sink("syslog:/tmp/test-autoops-syslog.sock")
-    assert isinstance(sink, SyslogSink)
-    sink.close()
+    if hasattr(socket, "AF_UNIX"):
+        sink = parse_sink("syslog:/tmp/test-autoops-syslog.sock")
+        assert isinstance(sink, SyslogSink)
+        sink.close()
+    else:
+        with pytest.raises(SinkError, match="not supported on this platform"):
+            parse_sink("syslog:/tmp/test-autoops-syslog.sock")
     sink = parse_sink("syslog:127.0.0.1:514")
     assert isinstance(sink, SyslogSink)
     sink.close()

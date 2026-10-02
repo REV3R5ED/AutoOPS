@@ -18,6 +18,7 @@ from __future__ import annotations
 import contextlib
 import json
 import logging.handlers
+import socket
 import sys
 import time
 import urllib.parse
@@ -82,9 +83,14 @@ class SyslogSink(Sink):
             default = "/dev/log" if Path("/dev/log").exists() else ("127.0.0.1", 514)
         else:
             default = _parse_syslog_address(address)
+        if isinstance(default, str) and not hasattr(socket, "AF_UNIX"):
+            raise SinkError(
+                f"syslog unix-socket sink {address!r} is not supported on this platform; "
+                "use a host:port address instead"
+            )
         try:
             self._handler = logging.handlers.SysLogHandler(address=default)
-        except (OSError, ValueError) as exc:
+        except (OSError, ValueError, AttributeError) as exc:
             raise SinkError(f"could not open syslog sink {address!r}: {exc}") from exc
         self._logger = logging.getLogger("autoops.watch")
         self._logger.addHandler(self._handler)
