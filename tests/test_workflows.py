@@ -132,3 +132,21 @@ def test_workflow_can_collect_failures_when_fail_fast_disabled():
     assert result.stopped_early is False
     assert calls == ["fail", "later"]
     assert len(result.results) == 2
+
+
+def test_workflow_run_rejects_non_boolean_verbose():
+    workflow = Workflow("diagnostics", (Operation("ok", lambda: {"ready": True}),))
+    with pytest.raises(TypeError, match="verbose must be a boolean"):
+        workflow.run(verbose="yes")
+
+
+def test_workflow_verbose_passes_through_to_operations():
+    def fail():
+        raise RuntimeError("inner-token-abc123")
+
+    workflow = Workflow("diagnostics", (Operation("failure", fail),), fail_fast=False)
+    quiet = workflow.run()
+    loud = workflow.run(verbose=True)
+    assert "inner-token-abc123" not in quiet.results[0].message
+    assert "inner-token-abc123" in loud.results[0].message
+    assert loud.results[0].data["error_detail"] == "RuntimeError: inner-token-abc123"

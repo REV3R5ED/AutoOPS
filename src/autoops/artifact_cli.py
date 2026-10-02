@@ -5,11 +5,11 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import sys
 from pathlib import Path
 
-from autoops.artifacts import ArtifactExpectation, artifact_health, assess_artifacts
+from autoops.artifacts import ArtifactExpectation, ArtifactStatus, artifact_health, assess_artifacts
 from autoops.reporting import to_csv
-
 
 FIELDS = (
     "path",
@@ -29,9 +29,15 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("path", nargs="?", help="Regular file to inspect")
     parser.add_argument("--manifest", help="JSON manifest containing an artifacts array of path/age/size expectations")
-    parser.add_argument("--max-age-seconds", type=float, help="Maximum acceptable file age in seconds (required for a single path)")
-    parser.add_argument("--min-size-bytes", type=int, default=0, help="Minimum acceptable file size in bytes (default: 0)")
-    parser.add_argument("--fail-on-unhealthy", action="store_true", help="Return exit code 1 when any assessed artifact is unhealthy")
+    parser.add_argument(
+        "--max-age-seconds", type=float, help="Maximum acceptable file age in seconds (required for a single path)"
+    )
+    parser.add_argument(
+        "--min-size-bytes", type=int, default=0, help="Minimum acceptable file size in bytes (default: 0)"
+    )
+    parser.add_argument(
+        "--fail-on-unhealthy", action="store_true", help="Return exit code 1 when any assessed artifact is unhealthy"
+    )
     output = parser.add_mutually_exclusive_group()
     output.add_argument("--json", action="store_true", dest="as_json", help="Emit JSON")
     output.add_argument("--csv", action="store_true", dest="as_csv", help="Emit CSV")
@@ -80,7 +86,7 @@ def _load_manifest(path: str) -> tuple[ArtifactExpectation, ...]:
     return tuple(expectations)
 
 
-def _batch_csv(rows: tuple[object, ...]) -> str:
+def _batch_csv(rows: tuple[ArtifactStatus, ...]) -> str:
     rendered = [to_csv(row.to_dict(), fields=FIELDS) for row in rows]
     if not rendered:
         return to_csv({}, fields=FIELDS)
@@ -95,13 +101,13 @@ def _batch_csv(rows: tuple[object, ...]) -> str:
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     if bool(args.path) == bool(args.manifest):
-        print("error: provide exactly one of path or --manifest")
+        print("error: provide exactly one of path or --manifest", file=sys.stderr)
         return 2
     if args.path and args.max_age_seconds is None:
-        print("error: --max-age-seconds is required when checking a single path")
+        print("error: --max-age-seconds is required when checking a single path", file=sys.stderr)
         return 2
     if args.manifest and (args.max_age_seconds is not None or args.min_size_bytes != 0):
-        print("error: age and size thresholds belong inside the manifest")
+        print("error: age and size thresholds belong inside the manifest", file=sys.stderr)
         return 2
 
     try:
@@ -131,7 +137,7 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"State: {status.state}")
             unhealthy = status.state != "ok"
     except (FileNotFoundError, OSError, ValueError) as exc:
-        print(f"error: {exc}")
+        print(f"error: {exc}", file=sys.stderr)
         return 2
 
     return 1 if args.fail_on_unhealthy and unhealthy else 0

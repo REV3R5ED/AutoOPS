@@ -31,7 +31,9 @@ def test_disk_cli_json(tmp_path, capsys) -> None:
 def test_disk_cli_missing_path(tmp_path, capsys) -> None:
     result = main(["disk", str(tmp_path / "missing")])
     assert result == 2
-    assert "Path does not exist" in capsys.readouterr().out
+    captured = capsys.readouterr()
+    assert "Path does not exist" in captured.err
+    assert captured.out == ""
 
 
 def test_cli_config_can_enable_json_and_threshold(tmp_path, capsys) -> None:
@@ -76,7 +78,9 @@ def test_cli_rejects_bad_config(tmp_path, capsys) -> None:
     config = tmp_path / "autoops.json"
     config.write_text('{"unknown": true}', encoding="utf-8")
     assert main(["--config", str(config), "disk", str(tmp_path)]) == 2
-    assert "Unknown configuration key" in capsys.readouterr().out
+    captured = capsys.readouterr()
+    assert "Unknown configuration key" in captured.err
+    assert captured.out == ""
 
 
 def test_environment_cli_json(capsys) -> None:
@@ -150,4 +154,6 @@ def test_preflight_min_free_threshold_preserves_reason(tmp_path, capsys) -> None
 def test_preflight_missing_path_is_operational_error(tmp_path, capsys) -> None:
     result = main(["preflight", str(tmp_path / "missing"), "--json"])
     assert result == 2
-    assert "Path does not exist" in capsys.readouterr().out
+    captured = capsys.readouterr()
+    assert "Path does not exist" in captured.err
+    assert captured.out == ""

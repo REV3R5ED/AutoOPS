@@ -23,9 +23,11 @@ def test_mutating_operation_defaults_to_dry_run_without_calling_action():
 
 def test_mutating_operation_requires_explicit_dry_run_false():
     calls = []
+
     def action():
         calls.append(True)
         return {"changed": True}
+
     result = Operation("change-setting", action, mutates_state=True).run(dry_run=False)
     assert result.status is OperationStatus.SUCCESS
     assert calls == [True]
@@ -48,8 +50,10 @@ def test_operation_rejects_non_boolean_dry_run_before_action_executes():
 
 def test_operation_failure_is_normalized_without_leaking_exception_text():
     secret = "api-token-super-secret"
+
     def fail():
         raise RuntimeError(f"request failed with token {secret}")
+
     result = Operation("failing-check", fail).run()
     assert result.success is False
     assert result.status is OperationStatus.FAILED
@@ -99,3 +103,64 @@ def test_operation_rejects_control_characters_in_name():
 def test_operation_rejects_non_callable_action():
     with pytest.raises(TypeError, match="operation action must be callable"):
         Operation("invalid-action", None)  # type: ignore[arg-type]
+
+
+def test_verbose_run_reveals_exception_detail() -> None:
+    secret = "api-token-super-secret"
+
+    def fail():
+        raise RuntimeError(f"request failed with token {secret}")
+
+    result = Operation("failing-check", fail).run(verbose=True)
+    assert result.success is False
+    assert result.status is OperationStatus.FAILED
+    assert secret in result.message
+    assert result.data["error_type"] == "RuntimeError"
+    assert result.data["error_detail"] == f"RuntimeError: request failed with token {secret}"
+
+
+def test_verbose_defaults_to_suppressed() -> None:
+    def fail():
+        raise RuntimeError("request failed with token hunter2")
+
+    result = Operation("failing-check", fail).run()
+    assert result.success is False
+    assert "suppressed" in result.message
+    assert "hunter2" not in result.message
+    assert "error_detail" not in result.data
+
+
+def test_run_rejects_non_boolean_verbose() -> None:
+    operation = Operation("inspect", lambda: {"value": 1})
+    with pytest.raises(TypeError, match="verbose must be a boolean"):
+        operation.run(verbose=1)
+
+
+def test_verbose_does_not_affect_dry_run() -> None:
+    calls = []
+    operation = Operation("change", lambda: calls.append(True) or {"changed": True}, mutates_state=True)
+    result = operation.run(verbose=True)
+    assert result.status is OperationStatus.DRY_RUN
+    assert calls == []
+
+
+def test_operation_from_check_wraps_status_object() -> None:
+    from autoops.checks import disk_status
+    from autoops.operations import operation_from_check
+
+    operation = operation_from_check("disk-check", disk_status, ".")
+    assert operation.name == "disk-check"
+    assert operation.mutates_state is False
+    result = operation.run()
+    assert result.success is True
+    assert result.data["operation"] == "disk-check"
+    assert "used_percent" in result.data
+
+
+def test_operation_from_check_rejects_non_serializable_check() -> None:
+    from autoops.operations import operation_from_check
+
+    operation = operation_from_check("bad-check", lambda: 42)
+    result = operation.run()
+    assert result.success is False
+    assert result.status is OperationStatus.FAILED

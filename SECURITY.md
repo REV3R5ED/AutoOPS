@@ -16,7 +16,23 @@ A useful report includes the affected AutoOPS version or commit, operating syste
 
 AutoOPS is designed around explicit operator control:
 
-- Current built-in health checks are local and read-only.
+- Built-in health checks are local and read-only, except two explicit,
+  narrowly scoped network features: `autoops tls` performs a single TLS
+  handshake with the named host to read certificate expiry (chain validation
+  disabled; expiry only, never a trust decision), and remote preflight runs
+  three allowlisted read-only probes over SSH.
+- Remote SSH checks never auto-accept unknown host keys
+  (`StrictHostKeyChecking=yes`), use key-based auth only (`BatchMode=yes`),
+  validate `ssh://` targets strictly, and refuse any command outside the
+  read-only allowlist.
+- `autoops watch` appends redacted audit events only to the sink the
+  operator explicitly selects (file, syslog, or HTTP(S)); HTTP sink URLs
+  with embedded credentials are rejected.
+- Errors and diagnostics go to stderr so machine-readable JSON/CSV output
+  on stdout stays clean for CI consumers.
+- The global `--verbose` flag reveals exception detail suppressed by
+  default; it is opt-in per invocation because the detail may include
+  sensitive runtime data.
 - Operations declare whether they mutate system state.
 - Mutating operations default to dry-run and require an explicit `dry_run=False` decision before their action executes.
 - Workflow composition preserves the operation-level dry-run decision instead of bypassing it.

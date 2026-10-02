@@ -16,10 +16,13 @@ def test_manifest_json_reports_batch_and_health_gate(tmp_path, capsys) -> None:
     unhealthy = tmp_path / "empty.log"
     healthy.write_text("ready", encoding="utf-8")
     unhealthy.write_text("", encoding="utf-8")
-    manifest = _manifest(tmp_path, [
-        {"path": str(healthy), "max_age_seconds": 60, "min_size_bytes": 1},
-        {"path": str(unhealthy), "max_age_seconds": 60, "min_size_bytes": 1},
-    ])
+    manifest = _manifest(
+        tmp_path,
+        [
+            {"path": str(healthy), "max_age_seconds": 60, "min_size_bytes": 1},
+            {"path": str(unhealthy), "max_age_seconds": 60, "min_size_bytes": 1},
+        ],
+    )
 
     result = main(["--manifest", str(manifest), "--json", "--fail-on-unhealthy"])
     payload = json.loads(capsys.readouterr().out)
@@ -53,15 +56,20 @@ def test_manifest_relative_paths_resolve_from_manifest_directory(tmp_path, monke
 def test_manifest_rejects_duplicate_resolved_paths(tmp_path, capsys) -> None:
     artifact = tmp_path / "backup.json"
     artifact.write_text("ready", encoding="utf-8")
-    manifest = _manifest(tmp_path, [
-        {"path": "backup.json", "max_age_seconds": 60},
-        {"path": "./backup.json", "max_age_seconds": 120},
-    ])
+    manifest = _manifest(
+        tmp_path,
+        [
+            {"path": "backup.json", "max_age_seconds": 60},
+            {"path": "./backup.json", "max_age_seconds": 120},
+        ],
+    )
 
     result = main(["--manifest", str(manifest), "--json"])
 
     assert result == 2
-    assert "duplicates an earlier resolved path" in capsys.readouterr().out
+    captured = capsys.readouterr()
+    assert "duplicates an earlier resolved path" in captured.err
+    assert captured.out == ""
 
 
 def test_manifest_rejects_empty_artifact_list(tmp_path, capsys) -> None:
@@ -70,7 +78,9 @@ def test_manifest_rejects_empty_artifact_list(tmp_path, capsys) -> None:
     result = main(["--manifest", str(manifest), "--json", "--fail-on-unhealthy"])
 
     assert result == 2
-    assert "artifacts array must not be empty" in capsys.readouterr().out
+    captured = capsys.readouterr()
+    assert "artifacts array must not be empty" in captured.err
+    assert captured.out == ""
 
 
 def test_manifest_rejects_non_finite_max_age(tmp_path, capsys) -> None:
@@ -80,7 +90,9 @@ def test_manifest_rejects_non_finite_max_age(tmp_path, capsys) -> None:
         result = main(["--manifest", str(manifest), "--json"])
 
         assert result == 2
-        assert "finite non-negative number" in capsys.readouterr().out
+        captured = capsys.readouterr()
+        assert "finite non-negative number" in captured.err
+        assert captured.out == ""
 
 
 def test_manifest_csv_emits_one_row_per_artifact(tmp_path, capsys) -> None:
@@ -88,10 +100,13 @@ def test_manifest_csv_emits_one_row_per_artifact(tmp_path, capsys) -> None:
     second = tmp_path / "second.txt"
     first.write_text("one", encoding="utf-8")
     second.write_text("two", encoding="utf-8")
-    manifest = _manifest(tmp_path, [
-        {"path": str(first), "max_age_seconds": 60},
-        {"path": str(second), "max_age_seconds": 60},
-    ])
+    manifest = _manifest(
+        tmp_path,
+        [
+            {"path": str(first), "max_age_seconds": 60},
+            {"path": str(second), "max_age_seconds": 60},
+        ],
+    )
 
     result = main(["--manifest", str(manifest), "--csv"])
     rows = list(csv.DictReader(io.StringIO(capsys.readouterr().out)))
@@ -102,14 +117,19 @@ def test_manifest_csv_emits_one_row_per_artifact(tmp_path, capsys) -> None:
 
 
 def test_manifest_rejects_unknown_keys(tmp_path, capsys) -> None:
-    manifest = _manifest(tmp_path, [
-        {"path": "report.txt", "max_age_seconds": 60, "command": "do-not-run"},
-    ])
+    manifest = _manifest(
+        tmp_path,
+        [
+            {"path": "report.txt", "max_age_seconds": 60, "command": "do-not-run"},
+        ],
+    )
 
     result = main(["--manifest", str(manifest), "--json"])
 
     assert result == 2
-    assert "unknown keys" in capsys.readouterr().out
+    captured = capsys.readouterr()
+    assert "unknown keys" in captured.err
+    assert captured.out == ""
 
 
 def test_cli_requires_exactly_one_input_mode(tmp_path, capsys) -> None:

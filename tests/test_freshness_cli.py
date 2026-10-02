@@ -55,4 +55,6 @@ def test_freshness_cli_rejects_invalid_threshold(tmp_path, capsys) -> None:
     result = main(["freshness", str(target), "--max-age-seconds", "-1"])
 
     assert result == 2
-    assert "finite non-negative number" in capsys.readouterr().out
+    captured = capsys.readouterr()
+    assert "finite non-negative number" in captured.err
+    assert captured.out == ""

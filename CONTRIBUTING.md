@@ -11,8 +11,16 @@ python -m venv .venv
 # Linux/macOS: source .venv/bin/activate
 # Windows PowerShell: .venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
-python -m pip install -e . pytest
+python -m pip install -e .[dev]
 pytest -q
+```
+
+The `dev` extra provides `pytest`, `pytest-cov`, `ruff`, and `mypy`. Before opening a pull request, also run:
+
+```bash
+ruff check src tests && ruff format --check src tests
+mypy src
+pytest -q --cov=autoops --cov-report=term-missing --cov-fail-under=80
 ```
 
 When changing CLI behavior, also exercise the relevant command locally, for example:
@@ -40,7 +48,9 @@ Use synthetic fixtures and placeholder infrastructure data in tests and examples
 
 Every behavior change should include focused regression coverage. Keep tests deterministic and independent of external services wherever practical.
 
-GitHub Actions runs the suite on Python 3.10–3.13 on Linux and adds Windows and macOS coverage on Python 3.12. Changes to filesystem, path, process, environment, or CLI behavior should account for those supported platforms rather than assuming a single operating system.
+GitHub Actions runs the suite on Python 3.10–3.13 on Linux and adds Windows and macOS coverage on Python 3.12. A lint job enforces `ruff check`, `ruff format --check`, and `mypy src`; the pytest run enforces a coverage gate (`--cov-fail-under=80`). Changes to filesystem, path, process, environment, or CLI behavior should account for those supported platforms rather than assuming a single operating system.
+
+Error and diagnostic output belongs on stderr; machine-readable JSON/CSV on stdout must stay clean for CI consumers. New checks should follow the existing dataclass + `to_dict()` pattern so they plug into `operation_from_check`, workflows, audit logging, and CSV/JSON reporting with exit codes `0`/`1`/`2`.
 
 For reporting changes, preserve stable JSON/CSV schemas unless a documented compatibility change is intentional. For state-changing operations, tests should prove that dry-run does not execute the action and that explicit execution behaves as documented.
 

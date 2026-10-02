@@ -4,6 +4,23 @@ All notable changes to AutoOPS are documented here. The project follows semantic
 
 ## [Unreleased]
 
+### Added
+- Remote/fleet checks: `autoops preflight ssh://[user@]host[:port]` runs read-only environment, disk, and memory probes on a remote host through the system `ssh` client and emits a schema-v5 preflight report (`docs/preflight-schema.md`, `docs/remote-checks.md`).
+- Remote SSH checks use a strict host-key policy (`StrictHostKeyChecking=yes`, never auto-accept unknown keys), key-based auth only (`BatchMode=yes`, no password prompts), strict `ssh://` target validation that rejects option-flag smuggling, and an explicit allowlist of three read-only remote commands; remote checks plug into the `Operation`/`Workflow` contract via `autoops.remote.remote_check_operation`.
+- New `autoops memory` check reporting host memory pressure (Linux `/proc/meminfo`, macOS `sysctl`/`vm_stat`, Windows `GlobalMemoryStatusEx`) with a configurable `memory_warning_percent` threshold (default `90.0`).
+- New `autoops systemd <unit>` check reporting one systemd unit's health (`active`/`inactive`/`failed`/`not-found`/`unknown`) with strict unit-name validation and shell-free `systemctl` invocation.
+- New `autoops tls <host>` check assessing remote TLS certificate expiry via a read-only handshake and a built-in DER parser (chain validation intentionally disabled; expiry only).
+- New `autoops loggrowth <path>` check measuring a log file's short-term growth rate, distinguishing rotation (`rotated`) from excessive growth (`warning`).
+- `autoops watch` daemon/sink mode: periodically runs read-only checks and appends redacted NDJSON audit events to an explicit `file:`, `syslog`, or `http(s)://` sink, with `--checks`, `--runs`, and `--interval-seconds` controls (see `docs/watch.md`).
+- `autoops.operations.operation_from_check` wraps any `to_dict()`-style check as a non-mutating `Operation` for workflow composition and audit logging.
+- Global `autoops --verbose` flag (and `verbose=True` on `Operation.run`/`Workflow.run`) reveals the exception detail suppressed by default at the operation boundary, for operator-initiated diagnostics.
+- `ruff` (lint + format) and `mypy` checks in CI, plus an 80% coverage gate on the pytest run; new `dev` extra (`pip install -e .[dev]`) bundles `pytest`, `pytest-cov`, `ruff`, and `mypy`.
+- `docs/preflight-schema.md` documents preflight report schema versions 1–5; `docs/remote-checks.md`, `docs/watch.md`, and `docs/extended-checks.md` document the new features.
+
+### Changed
+- Errors and diagnostics are now written to stderr instead of stdout, keeping machine-readable JSON/CSV output on stdout clean for CI consumers.
+- The hardcoded `disk_warning_percent` default (`90.0`) is now the single `autoops.config.DEFAULT_DISK_WARNING_PERCENT` constant.
+
 ## [0.3.0] - 2026-09-18
 
 ### Added

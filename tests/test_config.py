@@ -11,7 +11,9 @@ def test_load_config_defaults() -> None:
 
 def test_load_config_from_json(tmp_path) -> None:
     path = tmp_path / "autoops.json"
-    path.write_text(json.dumps({"json_output": True, "disk_warning_percent": 75, "disk_min_free_gib": 10}), encoding="utf-8")
+    path.write_text(
+        json.dumps({"json_output": True, "disk_warning_percent": 75, "disk_min_free_gib": 10}), encoding="utf-8"
+    )
 
     config = load_config(path)
 
@@ -61,3 +63,25 @@ def test_invalid_json_is_rejected(tmp_path) -> None:
 
     with pytest.raises(ValueError, match="Invalid JSON"):
         load_config(path)
+
+
+def test_disk_warning_default_is_single_constant() -> None:
+    from autoops.config import DEFAULT_DISK_WARNING_PERCENT
+
+    assert DEFAULT_DISK_WARNING_PERCENT == 90.0
+    assert Config().disk_warning_percent == DEFAULT_DISK_WARNING_PERCENT
+    assert Config.from_mapping({}).disk_warning_percent == DEFAULT_DISK_WARNING_PERCENT
+
+
+def test_memory_warning_percent_config() -> None:
+    from autoops.config import DEFAULT_MEMORY_WARNING_PERCENT
+
+    assert DEFAULT_MEMORY_WARNING_PERCENT == 90.0
+    assert Config().memory_warning_percent == DEFAULT_MEMORY_WARNING_PERCENT
+    assert Config.from_mapping({"memory_warning_percent": 75}).memory_warning_percent == 75.0
+
+
+@pytest.mark.parametrize("value", [True, "90", float("nan"), float("inf"), -1, 101])
+def test_memory_warning_percent_validation(value) -> None:
+    with pytest.raises(ValueError, match="memory_warning_percent"):
+        Config.from_mapping({"memory_warning_percent": value})
