@@ -9,12 +9,16 @@ def test_artifact_cli_json_reports_healthy_file(tmp_path, capsys) -> None:
     target = tmp_path / "backup.json"
     target.write_text('{"ok": true}', encoding="utf-8")
 
-    result = main([
-        str(target),
-        "--max-age-seconds", "60",
-        "--min-size-bytes", "4",
-        "--json",
-    ])
+    result = main(
+        [
+            str(target),
+            "--max-age-seconds",
+            "60",
+            "--min-size-bytes",
+            "4",
+            "--json",
+        ]
+    )
     payload = json.loads(capsys.readouterr().out)
 
     assert result == 0
@@ -27,13 +31,17 @@ def test_artifact_cli_health_gate_preserves_json_report(tmp_path, capsys) -> Non
     target = tmp_path / "empty.log"
     target.write_text("", encoding="utf-8")
 
-    result = main([
-        str(target),
-        "--max-age-seconds", "60",
-        "--min-size-bytes", "1",
-        "--json",
-        "--fail-on-unhealthy",
-    ])
+    result = main(
+        [
+            str(target),
+            "--max-age-seconds",
+            "60",
+            "--min-size-bytes",
+            "1",
+            "--json",
+            "--fail-on-unhealthy",
+        ]
+    )
     payload = json.loads(capsys.readouterr().out)
 
     assert result == 1
@@ -58,4 +66,6 @@ def test_artifact_cli_missing_file_is_operational_error(tmp_path, capsys) -> Non
     result = main([str(tmp_path / "missing"), "--max-age-seconds", "60"])
 
     assert result == 2
-    assert "error:" in capsys.readouterr().out
+    captured = capsys.readouterr()
+    assert "error:" in captured.err
+    assert captured.out == ""

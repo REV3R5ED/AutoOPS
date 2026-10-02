@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 import json
+from datetime import datetime, timezone
 from typing import Any, TextIO
 
 from autoops.operations import OperationResult
@@ -20,10 +20,7 @@ def _is_sensitive_key(key: str) -> bool:
 def redact(value: Any) -> Any:
     """Return a JSON-friendly copy with common secret-bearing fields redacted."""
     if isinstance(value, dict):
-        return {
-            str(key): _REDACTED if _is_sensitive_key(str(key)) else redact(item)
-            for key, item in value.items()
-        }
+        return {str(key): _REDACTED if _is_sensitive_key(str(key)) else redact(item) for key, item in value.items()}
     if isinstance(value, (list, tuple)):
         return [redact(item) for item in value]
     if value is None or isinstance(value, (str, int, float, bool)):

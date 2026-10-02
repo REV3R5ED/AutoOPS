@@ -29,9 +29,16 @@ autoops disk /path/to/check --json
 autoops environment --json
 autoops preflight .
 autoops preflight /path/to/check --json --fail-on-warning
+autoops memory --json --fail-on-warning
+autoops systemd ssh.service --json --fail-on-warning
+autoops tls example.com --json --fail-on-warning
+autoops loggrowth /var/log/app.log --interval-seconds 5 --json
+autoops preflight ssh://deploy@web-01:2222 --json --fail-on-warning
 ```
 
-`disk` summarizes used/free filesystem capacity and warning state. `environment` captures a compact preflight snapshot containing hostname, operating system/release, machine architecture, Python version, and logical CPU count. `preflight` combines both checks into one flat report for support handoffs, CI prechecks, and repeatable workstation/server diagnostics. All three commands are local and read-only; none changes system state or probes remote hosts.
+`disk` summarizes used/free filesystem capacity and warning state. `environment` captures a compact preflight snapshot containing hostname, operating system/release, machine architecture, Python version, and logical CPU count. `preflight` combines both checks into one flat report for support handoffs, CI prechecks, and repeatable workstation/server diagnostics. `memory` reports host memory pressure against a configurable threshold. `systemd` reports one systemd unit's health (Linux). `tls` checks a remote TLS certificate's expiry with a read-only handshake. `loggrowth` measures a log file's short-term growth rate and distinguishes rotation from growth. All of these are local and read-only, except `tls` (a single TCP+TLS handshake to the named host) and `preflight ssh://...` (read-only probes over SSH, see [Remote checks over SSH](docs/remote-checks.md)); none changes system state.
+
+Preflight report schema versions are documented in [docs/preflight-schema.md](docs/preflight-schema.md). Remote preflight emits schema v5, which adds the `remote_host` label and remote memory fields.
 
 ### Portfolio example: CI health gate
 
@@ -61,11 +68,12 @@ Example:
 {
   "json_output": true,
   "disk_warning_percent": 85,
-  "disk_min_free_gib": 10
+  "disk_min_free_gib": 10,
+  "memory_warning_percent": 85
 }
 ```
 
-`json_output` changes the default output mode. `disk_warning_percent` warns when used capacity reaches the configured percentage. Optional `disk_min_free_gib` also warns when absolute free capacity falls below the configured GiB value; this is useful for workloads that need predictable headroom even on large filesystems. When both thresholds are configured, either condition can trigger a warning and reports identify the warning reason. Unknown keys, wrong types, malformed JSON, negative minimum-free values, and percentage thresholds outside 0–100 are rejected instead of being silently ignored. No config file is required; safe built-in defaults are used otherwise.
+`json_output` changes the default output mode. `disk_warning_percent` warns when used capacity reaches the configured percentage. Optional `disk_min_free_gib` also warns when absolute free capacity falls below the configured GiB value; this is useful for workloads that need predictable headroom even on large filesystems. When both thresholds are configured, either condition can trigger a warning and reports identify the warning reason. `memory_warning_percent` warns when used memory reaches the configured percentage (default `90.0`). Unknown keys, wrong types, malformed JSON, negative minimum-free values, and percentage thresholds outside 0–100 are rejected instead of being silently ignored. No config file is required; safe built-in defaults are used otherwise.
 
 ## Artifact health checks
 
@@ -102,7 +110,9 @@ A scheduled backup job can run the manifest check after producing its files and 
 
 AutoOPS has a reusable `Operation` / `OperationResult` contract for automation modules. Every operation declares whether it mutates system state. Mutating operations default to **dry-run**, and their action is not called until a caller explicitly supplies `dry_run=False`.
 
-Results use stable `success`, `status`, `message`, and `data` fields and serialize cleanly for CLI or integration output. Exceptions at the operation boundary are normalized into failed results rather than leaking inconsistent result shapes.
+Results use stable `success`, `status`, `message`, and `data` fields and serialize cleanly for CLI or integration output. Exceptions at the operation boundary are normalized into failed results rather than leaking inconsistent result shapes. The raw exception message is suppressed by default because it can carry credentials, paths, or command output; an operator can opt into full detail with `verbose=True` (or the global `autoops --verbose` flag), accepting that the detail may be sensitive.
+
+`autoops.operations.operation_from_check` wraps any read-only check that returns a `to_dict()` status object (all built-in checks do) as a non-mutating `Operation`, so checks compose directly into workflows and audit logging.
 
 ## Workflow composition
 
@@ -129,6 +139,34 @@ result = workflow.run()  # planned-change is dry-run by default
 `autoops.logging` turns `OperationResult` objects into stable, newline-delimited JSON audit events. Events include a timezone-aware UTC timestamp, event type, success/status fields, message, and operation data, making them suitable for later ingestion by monitoring or reporting tools.
 
 The logger recursively redacts values stored under common secret-bearing field names such as passwords, tokens, API keys, secrets, and credentials before serialization. It never writes files implicitly: callers choose the destination stream, keeping logging behavior explicit and testable.
+
+## Watch mode: periodic checks with audit sinks
+
+`autoops watch` runs read-only checks on an interval and appends the redacted NDJSON audit events to an explicit sink — a local file, syslog, or an HTTP(S) endpoint:
+
+```bash
+autoops watch --interval-seconds 300 --sink file:/var/log/autoops/audit.ndjson --runs 12
+autoops watch --sink syslog --checks disk,memory
+autoops watch --sink https://logs.example.com/ingest --interval-seconds 60
+```
+
+`--checks` selects from `disk`, `environment`, `memory`; `--runs 0` (default) runs until interrupted. Progress and diagnostics go to stderr; sinks never use stdout. See [docs/watch.md](docs/watch.md) for sink rules, event semantics, and the `--verbose` knob.
+
+## Remote checks over SSH
+
+`autoops preflight ssh://[user@]host[:port]` runs the read-only environment, disk, and memory probes on a remote host through the system `ssh` client and emits a schema-v5 preflight report. Host keys are never auto-accepted (`StrictHostKeyChecking=yes`), authentication is key-based only (`BatchMode=yes`), and only an explicit allowlist of three read-only commands may run remotely. See [docs/remote-checks.md](docs/remote-checks.md) for the target syntax, host-key policy, and fleet-workflow usage.
+
+## Diagnostics: stderr and `--verbose`
+
+Errors and diagnostics are written to **stderr** so machine-readable JSON/CSV on stdout stays clean for CI consumers — a failing gate still emits its report on stdout with exit code 1, while the `error:` line goes to stderr with exit code 2.
+
+The global `--verbose` flag opts into the exception detail that `Operation.run()` suppresses by default:
+
+```bash
+autoops --verbose watch --sink file:./audit.ndjson --runs 1
+```
+
+Verbose detail can include paths, hostnames, or command output, so it is opt-in per invocation and never the default.
 
 ## Design Principles
 
@@ -176,15 +214,23 @@ Together the projects cover host/operations readiness, network diagnostics, log 
 ## Testing
 
 ```bash
-python -m pip install -e . pytest
+python -m pip install -e .[dev]
 pytest -q
 ```
 
-GitHub Actions runs the full test suite on Python 3.10–3.13 on Linux and adds Windows and macOS coverage on Python 3.12. CLI smoke tests exercise disk, environment, and combined preflight reporting. The release-sanity job path also builds both source and wheel distributions, installs the generated wheel, checks the packaged CLI version, and runs a packaged preflight command so packaging regressions are caught before tagging a release.
+The dev extra installs `pytest`, `pytest-cov`, `ruff`, and `mypy`. Useful checks:
+
+```bash
+ruff check src tests && ruff format --check src tests
+mypy src
+pytest -q --cov=autoops --cov-report=term-missing --cov-fail-under=80
+```
+
+GitHub Actions runs the full test suite on Python 3.10–3.13 on Linux and adds Windows and macOS coverage on Python 3.12. A lint job enforces `ruff check`, `ruff format --check`, and `mypy`, and the pytest run fails under 80% coverage. CLI smoke tests exercise disk, environment, and combined preflight reporting. The release-sanity job path also builds both source and wheel distributions, installs the generated wheel, checks the packaged CLI version, and runs a packaged preflight command so packaging regressions are caught before tagging a release.
 
 ## Safety
 
-AutoOPS is intended for systems you own or administer with authorization. Current health-check functionality is read-only and performs no remote probing. The operation and workflow contracts ensure future state-changing automation is dry-run by default and requires explicit operator intent before execution. Configuration is local and deliberately limited to documented keys; it does not load or execute code. Structured logging redacts common secret-bearing fields and writes only to streams explicitly supplied by the caller. Reporting only serializes already-collected result data and performs no system changes. Destructive or irreversible features should additionally provide feature-specific safeguards.
+AutoOPS is intended for systems you own or administer with authorization. Health checks are read-only and perform no remote probing, except for two explicit, narrowly scoped features: `autoops tls` performs a single TLS handshake with the named host to read certificate expiry (chain validation disabled; expiry only), and `autoops preflight ssh://...` runs three allowlisted read-only probes over SSH with strict host-key checking and key-based auth only. `autoops watch` appends redacted audit events only to the sink the operator explicitly selects. The operation and workflow contracts ensure future state-changing automation is dry-run by default and requires explicit operator intent before execution. Configuration is local and deliberately limited to documented keys; it does not load or execute code. Structured logging redacts common secret-bearing fields and writes only to streams explicitly supplied by the caller. Reporting only serializes already-collected result data and performs no system changes. The global `--verbose` flag reveals suppressed exception detail, which may include sensitive runtime data — it is opt-in per invocation and never the default. Destructive or irreversible features should additionally provide feature-specific safeguards.
 
 ## Development
 

@@ -1,5 +1,5 @@
-from datetime import datetime, timedelta, timezone
 import os
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -16,7 +16,7 @@ def _artifact(tmp_path: Path, content: str, modified: datetime, name: str = "bac
 
 def test_artifact_health_reports_ok_when_recent_and_large_enough(tmp_path: Path) -> None:
     now = datetime(2026, 9, 17, 12, 0, tzinfo=timezone.utc)
-    target = _artifact(tmp_path, "{\"ok\": true}", now - timedelta(minutes=2))
+    target = _artifact(tmp_path, '{"ok": true}', now - timedelta(minutes=2))
 
     status = artifact_health(str(target), 300, min_size_bytes=4, now=now)
 
@@ -115,10 +115,12 @@ def test_assess_artifacts_rejects_duplicate_resolved_paths(tmp_path: Path) -> No
     duplicate_spelling = tmp_path / "." / "backup.tar"
 
     with pytest.raises(ValueError, match="paths must be unique"):
-        assess_artifacts([
-            ArtifactExpectation(str(target), 300),
-            ArtifactExpectation(str(duplicate_spelling), 600),
-        ])
+        assess_artifacts(
+            [
+                ArtifactExpectation(str(target), 300),
+                ArtifactExpectation(str(duplicate_spelling), 600),
+            ]
+        )
 
 
 @pytest.mark.parametrize(
@@ -136,9 +138,11 @@ def test_assess_artifacts_rejects_invalid_constraints_for_missing_paths(
     missing = tmp_path / "missing-backup.tar"
 
     with pytest.raises(ValueError, match=message):
-        assess_artifacts([
-            ArtifactExpectation(str(missing), max_age_seconds, min_size_bytes),
-        ])
+        assess_artifacts(
+            [
+                ArtifactExpectation(str(missing), max_age_seconds, min_size_bytes),
+            ]
+        )
 
 
 @pytest.mark.parametrize("now", [datetime(2026, 9, 17, 12, 0), "2026-09-17T12:00:00Z"])

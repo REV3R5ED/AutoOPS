@@ -7,7 +7,6 @@ import io
 from collections.abc import Mapping
 from typing import Any
 
-
 _FORMULA_PREFIXES = ("=", "+", "-", "@")
 
 

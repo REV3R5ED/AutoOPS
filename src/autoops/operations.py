@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
 from enum import Enum
-from typing import Any, Callable
+from typing import Any
 
 
 class OperationStatus(str, Enum):
@@ -56,9 +57,11 @@ class Operation:
         if not isinstance(self.mutates_state, bool):
             raise TypeError("mutates_state must be a boolean")
 
-    def run(self, *, dry_run: bool = True) -> OperationResult:
+    def run(self, *, dry_run: bool = True, verbose: bool = False) -> OperationResult:
         if not isinstance(dry_run, bool):
             raise TypeError("dry_run must be a boolean")
+        if not isinstance(verbose, bool):
+            raise TypeError("verbose must be a boolean")
 
         if self.mutates_state and dry_run:
             return OperationResult(
@@ -74,6 +77,16 @@ class Operation:
             # Exception text can contain credentials, tokens, paths, command output,
             # or other sensitive runtime details. Keep the public result useful for
             # diagnostics without propagating the exception message to reports/logs.
+            # An operator can opt into full exception detail with verbose=True; the
+            # suppressed default keeps automated reports and audit logs safe.
+            if verbose:
+                detail = f"{type(exc).__name__}: {exc}"
+                return OperationResult(
+                    success=False,
+                    status=OperationStatus.FAILED,
+                    message=f"{self.name} failed: {detail}",
+                    data={"operation": self.name, "error_type": type(exc).__name__, "error_detail": detail},
+                )
             return OperationResult(
                 success=False,
                 status=OperationStatus.FAILED,
@@ -104,3 +117,30 @@ class Operation:
             message=f"{self.name} completed successfully.",
             data={"operation": self.name, **data},
         )
+
+
+def operation_from_check(
+    name: str,
+    check: Callable[..., Any],
+    *args: Any,
+    **kwargs: Any,
+) -> Operation:
+    """Wrap a read-only check callable as a non-mutating :class:`Operation`.
+
+    The check must return an object exposing ``to_dict()`` (all built-in
+    AutoOPS checks do) so the operation result serializes cleanly for
+    workflows, reports, and audit logging. The wrapped operation never
+    mutates state, so it executes even under the default dry-run decision.
+    """
+
+    def action() -> dict[str, Any]:
+        status = check(*args, **kwargs)
+        to_dict = getattr(status, "to_dict", None)
+        if not callable(to_dict):
+            raise TypeError(f"check {name!r} did not return a serializable status object")
+        payload = to_dict()
+        if not isinstance(payload, dict):
+            raise TypeError(f"check {name!r} did not return a serializable status object")
+        return payload
+
+    return Operation(name, action, mutates_state=False)

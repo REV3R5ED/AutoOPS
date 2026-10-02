@@ -52,15 +52,17 @@ class Workflow:
         if not isinstance(self.fail_fast, bool):
             raise TypeError("fail_fast must be a boolean")
 
-    def run(self, *, dry_run: bool = True) -> WorkflowResult:
+    def run(self, *, dry_run: bool = True, verbose: bool = False) -> WorkflowResult:
         if not isinstance(dry_run, bool):
             raise TypeError("dry_run must be a boolean")
+        if not isinstance(verbose, bool):
+            raise TypeError("verbose must be a boolean")
 
         results: list[OperationResult] = []
         stopped_early = False
 
         for index, operation in enumerate(self.operations):
-            result = operation.run(dry_run=dry_run)
+            result = operation.run(dry_run=dry_run, verbose=verbose)
             results.append(result)
             if self.fail_fast and not result.success:
                 stopped_early = index < len(self.operations) - 1

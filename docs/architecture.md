@@ -9,11 +9,14 @@ AutoOPS separates collection, policy, orchestration, and presentation so each la
 ```text
 operator / CI
     |
-    +--> autoops CLI ------------------------+
-    |       |                                |
-    |       +--> config                      +--> reporting --> human / JSON / CSV
-    |       +--> checks (disk, environment)  |
-    |       +--> preflight aggregation ------+
+    +--> autoops CLI --------------------------------------+
+    |       |                                              |
+    |       +--> config                                    +--> reporting --> human / JSON / CSV
+    |       +--> checks (disk, environment, memory,         |
+    |       |        systemd, tls, log growth)              |
+    |       +--> remote (ssh fleet checks)                 |
+    |       +--> preflight aggregation -------------------+
+    |       +--> watch --> sinks (file/syslog/http) --> redacted NDJSON audit events
     |
     +--> autoops-artifact CLI --> artifacts --> human / JSON / CSV
 
@@ -28,8 +31,10 @@ programmatic automation
 
 | Module | Responsibility | Safety boundary |
 | --- | --- | --- |
-| `cli.py` | Main CLI, disk/environment/preflight commands, exit semantics | Local checks only; reporting is explicit |
-| `checks.py` | Collect local disk and environment health | Read-only; no remote probing |
+| `cli.py` | Main CLI, disk/environment/preflight/memory/systemd/tls/loggrowth/watch commands, exit semantics | Local checks only except explicit tls/ssh features; errors to stderr; reporting is explicit |
+| `checks.py` | Collect local disk, environment, memory, systemd, TLS expiry, and log-growth health | Read-only; no remote probing except the explicit TLS handshake |
+| `remote.py` | Read-only fleet checks over SSH with strict host-key policy and command allowlist | Key-based auth only; unknown host keys never auto-accepted; allowlisted commands only |
+| `watch.py` | Periodic check runner writing redacted NDJSON audit events to file/syslog/HTTP sinks | Read-only checks only; sink destination is explicit operator intent |
 | `config.py` | Parse and validate documented JSON configuration | Rejects unknown/malformed values instead of guessing |
 | `reporting.py` | Stable JSON/CSV serialization | Neutralizes spreadsheet-formula prefixes and rejects unsupported nested CSV values |
 | `artifacts.py` | Evaluate expected files for presence, age, size, and timestamp anomalies | Reads metadata; does not modify artifacts |
@@ -67,7 +72,7 @@ CLI exit codes follow a simple contract where supported: `0` means the command c
 
 ## Trust boundaries
 
-AutoOPS deliberately does **not** treat configuration, report data, or manifests as executable instructions. Configuration is limited to documented keys. Artifact manifests describe local files and thresholds. Current health checks perform no network discovery or remote execution. Logging writes only to a stream explicitly supplied by the caller.
+AutoOPS deliberately does **not** treat configuration, report data, or manifests as executable instructions. Configuration is limited to documented keys. Artifact manifests describe local files and thresholds. Remote checks are confined to an explicit allowlist of read-only probes executed through the system `ssh` client with strict host-key checking and key-based authentication only; SSH targets are validated so crafted input cannot smuggle extra arguments. The TLS check performs a single handshake to read certificate expiry with chain validation disabled and never treats the peer as trusted. Watch writes redacted audit events only to the sink the operator explicitly selects. Logging writes only to a stream explicitly supplied by the caller.
 
 The repository's `SECURITY.md` defines vulnerability-reporting expectations; the README documents the operator-facing safety contract.
 
